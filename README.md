@@ -1,0 +1,2 @@
+# Qlibxlsxwriter
+libxlsxwriter for Qt.
