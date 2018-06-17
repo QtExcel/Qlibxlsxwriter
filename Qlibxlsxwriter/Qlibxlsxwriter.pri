@@ -1,12 +1,14 @@
+####################
+#
 #  Qlibxlsxwriter.pri
+#
 
 win32 {
     DEFINES += _WIN32
+    DEFINES += WIN32
+    DEFINES += WINDOWS
+    message( ' OS : Microsoft Windows' )
 }
-win64 {
-    DEFINES += _WIN32
-}
-
 
 isEmpty(QLIBXLSXWRITER_PARENTPATH) {
     message( 'QLIBXLSXWRITER_PARENTPATH is empty. use default value.' )
@@ -16,6 +18,7 @@ isEmpty(QLIBXLSXWRITER_PARENTPATH) {
     message( $${QLIBXLSXWRITER_PARENTPATH} )
 }
 
+####################
 # xlsxwriter
 
 INCLUDEPATH += \
@@ -63,7 +66,13 @@ $${QLIBXLSXWRITER_PARENTPATH}/src/workbook.c \
 $${QLIBXLSXWRITER_PARENTPATH}/src/worksheet.c \
 $${QLIBXLSXWRITER_PARENTPATH}/src/xmlwriter.c
 
+####################
+#
 # third party
+#
+
+INCLUDEPATH += \
+$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/
 
 HEADERS += \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tree.h \
@@ -71,9 +80,6 @@ $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/queue.h \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/ioapi.h \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/zip.h \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tmpfileplus.h
-
-INCLUDEPATH += \
-$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/
 
 # third party / minizip 
 
@@ -105,7 +111,7 @@ $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/
 # HEADERS += \
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.h
 
-SOURCES += \
-$${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.c
+# SOURCES += \
+# $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.c
 
 
