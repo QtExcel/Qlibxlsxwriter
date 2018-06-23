@@ -73,12 +73,12 @@ $${QLIBXLSXWRITER_PARENTPATH}/src/xmlwriter.c
 INCLUDEPATH += \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/
 
-HEADERS += \
-$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tree.h \
-$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/queue.h \
-$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/ioapi.h \
-$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/zip.h \
-$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tmpfileplus.h
+#HEADERS += \
+#$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tree.h \
+#$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/queue.h \
+#$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/ioapi.h \
+#$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/zip.h \
+#$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tmpfileplus.h
 
 #######################
 # minizip
