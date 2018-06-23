@@ -66,10 +66,9 @@ $${QLIBXLSXWRITER_PARENTPATH}/src/workbook.c \
 $${QLIBXLSXWRITER_PARENTPATH}/src/worksheet.c \
 $${QLIBXLSXWRITER_PARENTPATH}/src/xmlwriter.c
 
-####################
-#
+#########################
 # third party
-#
+#  : minizip, tmpfileplus
 
 INCLUDEPATH += \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/
@@ -81,11 +80,12 @@ $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/ioapi.h \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/zip.h \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tmpfileplus.h
 
-# third party / minizip 
-
+#######################
+# minizip
+#
 # INCLUDEPATH += \
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/
-
+#
 # HEADERS += \
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/crypt.h \
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.h \
@@ -93,7 +93,7 @@ $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tmpfileplus.h
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/mztools.h \
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/unzip.h \
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/zip.h
-
+#
 # SOURCES += \
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.c \
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/iowin32.c \
@@ -103,15 +103,21 @@ $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tmpfileplus.h
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/unzip.c \
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/zip.c
 
-# third party / tmpfileplus
+###########
+# QMiniZip (minizip alternative)
+
+
+
+############################
+# tmpfileplus
 
 # INCLUDEPATH += \
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/
 
-# HEADERS += \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.h
+HEADERS += \
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.h
 
-# SOURCES += \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.c
+SOURCES += \
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.c
 
 
