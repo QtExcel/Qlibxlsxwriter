@@ -2,10 +2,10 @@
 
 > *Read this in other languages: [English](README.md), :kr: [한국어](README.ko.md)*
 
-- Qlibxlsxwriter is a helper project that allows libxlsxwriter to be used in Qt.
-- libxlsxwriter is a C library for creating Excel XLSX files. 
+- Qlibxlsxwriter는 libxlsxwriter를 Qt에서 사용할 수있는 도우미 프로젝트입니다.
+- libxlsxwriter는 Excel XLSX 파일을 만들기위한 C 라이브러리입니다.
 
-## Hello World!
+## 헬로우 월드!
 
 ```cpp
 // main.cpp
@@ -61,11 +61,11 @@ int main(int argc, char **argv)
     return 0;
 }
 ```
-## Test Environment
+## 테스트 환경
 - Qt 5.11.1 / MingW 5.3.0 32bit / gcc 5.3.0 / mingw32-make 4.1
 - Qt 5.9.2 / CentOS(Linux) 3.10.0-693.17.1.el7.x86_64 x86_64 / gcc 4.8.5 / make 3.8.2
 
-## License and links
+## 라이센스와 링크
 - Qlibxlsxwriter is under MIT license.
 	- [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
 
@@ -76,19 +76,17 @@ int main(int argc, char **argv)
 	- [https://zlib.net/](https://zlib.net/) 
 	- [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
 
-## :mailbox: Contact
-- Please leave an issue to me. [https://github.com/j2doll/Qlibxlsxwriter/issues](https://github.com/j2doll/Qlibxlsxwriter/issues)
-- Hi! I'm j2doll (aka Jay Two). My native language is not English and my English is not fluent. Please, use EASY English. :-)
+## :mailbox: 문의
+- 이슈를 남겨주세요. [https://github.com/j2doll/Qlibxlsxwriter/issues](https://github.com/j2doll/Qlibxlsxwriter/issues)
 
-## Similar projects
+## 비슷한 프로젝트 
 - :star: QXlsx [https://github.com/j2doll/QXlsx](https://github.com/j2doll/QXlsx)
-	- QXlsx is excel file(*.xlsx) reader/writer library.
-		- Because QtXlsx is no longer supported(2014), I created a new project that is based on QtXlsx. (2017-)
-		- Development language of QXlsx is C++. (with Qt 5.x)
-		- You don't need to use static library or dynamic shared object using QXlsx.
+    - QXlsx는 엑셀 파일(*.xlsx)을 읽고 쓰는 라이브러리입니다.
+        - QtXlsx가 더이상 지원되지 않기 때문에(2014), QtXlsx에 기반한 새로운 프로젝트를 만들었습니다. (2017-)
+        - QXlsx는 개발언어로 C++를 사용합니다. (Qt 5.x 사용)
+        - QXlsx는 정적 또는 동적 라이브러리를 사용하지 않아도 되도록 제작되었습니다.
 
 * :star: Qxlnt [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
-	- Qxlnt is a helper project that allows xlnt to be used in Qt.
-	- xlnt is a excellent library for usinf xlsx Excel files.
-	- I was looking for a way to make it easy to use in Qt. Of course, cmake is compatible with Qt, but it is not convenient to use. So I created Qxlnt.
-
+    - Qxlnt는 xlnt가 Qt에서 사용될 수있게 해주는 도우미 프로젝트입니다.
+    - xlnt는 xlsx Excel 파일을 사용하기에 훌륭한 라이브러리입니다.
+    - xlnt를 Qt에서 사용하기 쉬운 방법을 찾고 있었습니다. 물론 cmake는 Qt와 호환되지만 사용하기가 쉽지 않습니다. 그래서 Qxlnt를 만들었습니다.
