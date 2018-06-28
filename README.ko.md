@@ -57,13 +57,12 @@ int main(int argc, char **argv)
 
      /* Save the workbook and free any allocated memory. */
      return workbook_close(workbook);
-
-    return 0;
 }
 ```
+
 ## 테스트 환경
 - Qt 5.11.1 / MingW 5.3.0 32bit / gcc 5.3.0 / mingw32-make 4.1
-- Qt 5.9.2 / CentOS(Linux) 3.10.0-693.17.1.el7.x86_64 x86_64 / gcc 4.8.5 / make 3.8.2
+- Qt 5.9.2 / CentOS(Linux) 3.10.0-693.17.1.el7.x86_64 x86_64 / gcc 4.8.5 / make 3.8.2 / zlib-devel
 
 ## 라이센스와 링크
 - Qlibxlsxwriter is under MIT license. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
