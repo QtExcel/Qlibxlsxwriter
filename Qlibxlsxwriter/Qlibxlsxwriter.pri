@@ -100,7 +100,7 @@ $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/
 HEADERS += \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/zip.h \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/unzip.h \
-$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.h
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.h \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/crypt.h
 
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/mztools.h
