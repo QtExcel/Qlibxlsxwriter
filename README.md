@@ -3,7 +3,7 @@
 > *Read this in other languages: [English](README.md), :kr: [한국어](README.ko.md)*
 
 - Qlibxlsxwriter is a helper project that allows libxlsxwriter to be used in Qt.
-- libxlsxwriter is a C library for creating Excel XLSX files. 
+- libxlsxwriter is a C library for creating Excel XLSX files. :+1:
 
 ## Hello World!
 
