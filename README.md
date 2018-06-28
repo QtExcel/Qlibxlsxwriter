@@ -66,15 +66,9 @@ int main(int argc, char **argv)
 - Qt 5.9.2 / CentOS(Linux) 3.10.0-693.17.1.el7.x86_64 x86_64 / gcc 4.8.5 / make 3.8.2
 
 ## License and links
-- Qlibxlsxwriter is under MIT license.
-	- [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
-
-- libxlsxwriter is under FreeBSD license.
-	- [https://github.com/jmcnamara/libxlsxwriter](https://github.com/jmcnamara/libxlsxwriter)
-
-- zlib is under zlib license.
-	- [https://zlib.net/](https://zlib.net/) 
-	- [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
+- Qlibxlsxwriter is under MIT license. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
+- libxlsxwriter is under FreeBSD license. [https://github.com/jmcnamara/libxlsxwriter](https://github.com/jmcnamara/libxlsxwriter)
+- zlib is under zlib license. [https://zlib.net/](https://zlib.net/) [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
 
 ## :mailbox: Contact
 - Please leave an issue to me. [https://github.com/j2doll/Qlibxlsxwriter/issues](https://github.com/j2doll/Qlibxlsxwriter/issues)
