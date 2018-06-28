@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 - libxlsxwriter is under FreeBSD license.
 	- [https://github.com/jmcnamara/libxlsxwriter](https://github.com/jmcnamara/libxlsxwriter)
 
-- zlib is under zlibe license. 
+- zlib is under zlib license.
 	- [https://zlib.net/](https://zlib.net/) 
 	- [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
 
