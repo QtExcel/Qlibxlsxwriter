@@ -1,9 +1,9 @@
 #
 # Qlibxlsxwriter.pro
 #
-# MIT License
-# j2doll    / Qlibxlsxwriter https://github.com/j2doll/Qlibxlsxwriter
-# jmcnamara / libxlsxwriter  https://github.com/jmcnamara/libxlsxwriter
+# Qlibxlsxwriter MIT license     https://github.com/j2doll/Qlibxlsxwriter
+# libxlsxwriter  FreeBSD license https://github.com/jmcnamara/libxlsxwriter
+#
 
 TARGET = Qlibxlsxwriter
 
@@ -21,5 +21,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
+# QLIBXLSXWRITER_PARENTPATH = ../libxlsxwriter/
 include(./Qlibxlsxwriter.pri)
 

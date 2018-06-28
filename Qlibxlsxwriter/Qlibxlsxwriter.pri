@@ -1,14 +1,9 @@
-####################
 #
 #  Qlibxlsxwriter.pri
 #
-
-win32{
-    DEFINES += _WIN32
-    DEFINES += WIN32
-    DEFINES += WINDOWS
-    message( ' OS : Microsoft Windows' )
-}
+# Qlibxlsxwriter MIT license     https://github.com/j2doll/Qlibxlsxwriter
+# libxlsxwriter  FreeBSD license https://github.com/jmcnamara/libxlsxwriter
+#
 
 isEmpty(QLIBXLSXWRITER_PARENTPATH) {
     message( 'QLIBXLSXWRITER_PARENTPATH is empty. use default value.' )
@@ -67,14 +62,13 @@ $${QLIBXLSXWRITER_PARENTPATH}/src/worksheet.c \
 $${QLIBXLSXWRITER_PARENTPATH}/src/xmlwriter.c
 
 #########################
-# third party
-#  : minizip, tmpfileplus
+# third party : minizip, tmpfileplus
 
 INCLUDEPATH += \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/
 
 
-############################
+#############
 # tmpfileplus
 
 # INCLUDEPATH += \
@@ -86,7 +80,6 @@ $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.h
 SOURCES += \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.c
 
-
 #HEADERS += \
 #$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tree.h \
 #$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/queue.h \
@@ -94,63 +87,38 @@ $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.c
 #$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/zip.h \
 #$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tmpfileplus.h
 
-#######################
+#############
 # minizip
-#
-# INCLUDEPATH += \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/
-#
-# HEADERS += \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/crypt.h \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.h \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/iowin32.h \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/mztools.h \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/unzip.h \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/zip.h
-#
-# SOURCES += \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.c \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/iowin32.c \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/miniunz.c \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/minizip.c \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/mztools.c \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/unzip.c \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/zip.c
 
-###########
-# QMiniZip (minizip alternative)
-
-QT += gui-private
-
-isEmpty(MINIZIP_PARENTPATH) {
-    message( 'MINIZIP_PARENTPATH is empty. use default value.' )
-    MINIZIP_PARENTPATH = ../minizip/
-} else {
-    message( 'MINIZIP_PARENTPATH :' )
-    message( $${MINIZIP_PARENTPATH} )
-}
+# use zlib
+HEADERS += zlib.h
+LIBS += -lz
 
 INCLUDEPATH += \
-$${MINIZIP_PARENTPATH}
-
-SOURCES += \
-$${MINIZIP_PARENTPATH}zip.c \
-$${MINIZIP_PARENTPATH}unzip.c \
-$${MINIZIP_PARENTPATH}ioapi.c \
-$${MINIZIP_PARENTPATH}ioapi_mem.c \
-$${MINIZIP_PARENTPATH}ioapi_buf.c
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/
 
 HEADERS += \
-$${MINIZIP_PARENTPATH}zip.h \
-$${MINIZIP_PARENTPATH}unzip.h \
-$${MINIZIP_PARENTPATH}ioapi.h \
-$${MINIZIP_PARENTPATH}crypt.h \
-$${MINIZIP_PARENTPATH}ioapi_mem.h \
-$${MINIZIP_PARENTPATH}ioapi_buf.h
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/zip.h \
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/unzip.h \
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.h
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/crypt.h
 
-win32{
-    HEADERS += $${MINIZIP_PARENTPATH}iowin32.h
-    SOURCES += $${MINIZIP_PARENTPATH}iowin32.c
+# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/mztools.h
+
+SOURCES += \
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/zip.c \
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/unzip.c \
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.c
+
+# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/miniunz.c \
+# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/minizip.c \
+# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/mztools.c
+
+win32 {
+HEADERS += \
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/iowin32.h
+
+SOURCES += \
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/iowin32.c
 }
-
 

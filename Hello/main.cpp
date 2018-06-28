@@ -1,6 +1,7 @@
 // main.cpp
 //
-// code from xlsxwriter
+// Qlibxlsxwriter MIT license     https://github.com/j2doll/Qlibxlsxwriter
+// libxlsxwriter  FreeBSD license https://github.com/jmcnamara/libxlsxwriter
 
 #include <QCoreApplication>
 
@@ -8,35 +9,44 @@
 
 int main(int argc, char **argv)
 {
-     QCoreApplication app(argc, argv);
+     QCoreApplication app(argc, argv); // it is a Qt code.
 
-    /* Create a new workbook and add a worksheet. */
-    lxw_workbook  *workbook  = workbook_new("demo.xlsx");
-    lxw_worksheet *worksheet = workbook_add_worksheet(workbook, NULL);
+     // See Tutorial 1: Create a simple XLSX file.
+     // http://libxlsxwriter.github.io/tutorial01.html
 
-    /* Add a format. */
-    lxw_format *format = workbook_add_format(workbook);
+     /* Some data we want to write to the worksheet. */
+     struct expense {
+         char item[32];
+         int  cost;
+     };
+     struct expense expenses[] = {
+         {"Rent", 1000},
+         {"Gas",   100},
+         {"Food",  300},
+         {"Gym",    50},
+     };
 
-    /* Set the bold property for the format */
-    format_set_bold(format);
 
-    /* Change the column width for clarity. */
-    worksheet_set_column(worksheet, 0, 0, 20, NULL);
+    /* Create a workbook and add a worksheet. */
+     lxw_workbook  *workbook  = workbook_new("tutorial01.xlsx");
+     lxw_worksheet *worksheet = workbook_add_worksheet(workbook, NULL);
 
-    /* Write some simple text. */
-    worksheet_write_string(worksheet, 0, 0, "Hello", NULL);
+     /* Start from the first cell. Rows and columns are zero indexed. */
+     int row = 0;
+     int col = 0;
 
-    /* Text with formatting. */
-    worksheet_write_string(worksheet, 1, 0, "World", format);
+     /* Iterate over the data and write it out element by element. */
+     for (row = 0; row < 4; row++) {
+         worksheet_write_string(worksheet, row, col,     expenses[row].item, NULL);
+         worksheet_write_number(worksheet, row, col + 1, expenses[row].cost, NULL);
+     }
 
-    /* Writer some numbers. */
-    worksheet_write_number(worksheet, 2, 0, 123,     NULL);
-    worksheet_write_number(worksheet, 3, 0, 123.456, NULL);
+     /* Write a total using a formula. */
+     worksheet_write_string (worksheet, row, col,     "Total",       NULL);
+     worksheet_write_formula(worksheet, row, col + 1, "=SUM(B1:B4)", NULL);
 
-    /* Insert an image. */
-    worksheet_insert_image(worksheet, 1, 2, "logo.png");
-
-    workbook_close(workbook);
+     /* Save the workbook and free any allocated memory. */
+     return workbook_close(workbook);
 
     return 0;
 }
