@@ -67,7 +67,6 @@ $${QLIBXLSXWRITER_PARENTPATH}/src/xmlwriter.c
 INCLUDEPATH += \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/
 
-
 #############
 # tmpfileplus
 
@@ -90,7 +89,7 @@ $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.c
 #############
 # minizip
 
-# use zlib
+# zlib
 HEADERS += zlib.h
 LIBS += -lz
 
@@ -114,11 +113,19 @@ $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.c
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/minizip.c \
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/mztools.c
 
-win32 {
-HEADERS += \
-$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/iowin32.h
+linux-g++ {
+    # linux gcc
+}
+win32-g++ {
+    # MingW, MSYS, CygWin
+    DEFINES += USE_FILE32API
+}
+win32-msvc* {
+    # Visual C++
+    HEADERS += \
+    $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/iowin32.h
 
-SOURCES += \
-$${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/iowin32.c
+    SOURCES += \
+    $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/iowin32.c
 }
 
