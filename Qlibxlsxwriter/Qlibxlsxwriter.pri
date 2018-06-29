@@ -117,8 +117,13 @@ linux-g++ {
     # linux gcc
 }
 win32-g++ {
-    # MingW, MSYS, CygWin
-    DEFINES += USE_FILE32API
+	# MingW, MSYS, CygWin
+	DEFINES += USE_FILE32API
+
+	QMAKE_CFLAGS += -static
+	QMAKE_CFLAGS += -static-libgcc
+	QMAKE_CFLAGS += -Wno-char-subscripts
+	QMAKE_CFLAGS += -Wno-long-long
 }
 win32-msvc* {
     # Visual C++
