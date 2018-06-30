@@ -5,7 +5,7 @@
 - Qlibxlsxwriter는 libxlsxwriter를 Qt에서 사용할 수있는 도우미 프로젝트입니다.
 - libxlsxwriter는 Excel XLSX 파일을 만들기위한 C 라이브러리 입니다. :+1:
 
-## 헬로우 월드!
+## 예제 (헬로우 월드!)
 
 ```cpp
 // main.cpp
@@ -61,13 +61,12 @@ int main(int argc, char **argv)
 ```
 
 ## 테스트 환경
-- Qt 5.11.1 / MingW 5.3.0 32bit / gcc 5.3.0 / mingw32-make 4.1
-- Qt 5.9.2 / CentOS(Linux) 3.10.0-693.17.1.el7.x86_64 x86_64 / gcc 4.8.5 / make 3.8.2 / zlib-devel
+- [테스트 환경](TestEnv.md) 참조.
 
 ## 라이센스와 링크
-- Qlibxlsxwriter is under MIT license. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
-- libxlsxwriter is under FreeBSD license. [https://github.com/jmcnamara/libxlsxwriter](https://github.com/jmcnamara/libxlsxwriter)
-- zlib is under zlib license. [https://zlib.net/](https://zlib.net/) [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
+- Qlibxlsxwriter는  MIT license 입니다. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
+- libxlsxwriter는 FreeBSD license 입니다. [https://github.com/jmcnamara/libxlsxwriter](https://github.com/jmcnamara/libxlsxwriter)
+- zlib는 zlib license 입니다. [https://zlib.net/](https://zlib.net/) [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
 
 ## :mailbox: 문의
 - 이슈를 남겨주세요. [https://github.com/j2doll/Qlibxlsxwriter/issues](https://github.com/j2doll/Qlibxlsxwriter/issues)
