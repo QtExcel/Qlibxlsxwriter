@@ -83,12 +83,12 @@ int main(int argc, char **argv)
 - QXlsx is excel file(*.xlsx) reader/writer library.
 - Because QtXlsx is no longer supported(2014), I created a new project that is based on QtXlsx. (2017-)
 - Development language of QXlsx is C++. (with Qt 5.x)
-- You don't need to use static library or dynamic shared object using QXlsx.
+- You don't need to use static library or dynamic shared object using QXlsx. :+1:
 
 ### :star: <b>Qxlnt</b> [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
 
 ![](https://github.com/j2doll/Qxlnt/raw/master/markdown-data/Concept-QXlnt.jpg)
 
 - Qxlnt is a helper project that allows xlnt to be used in Qt.
-- xlnt is a excellent library for usinf xlsx Excel files.
+- xlnt is a excellent library for usinf xlsx Excel files. :+1:
 - I was looking for a way to make it easy to use in Qt. Of course, cmake is compatible with Qt, but it is not convenient to use. So I created Qxlnt.
