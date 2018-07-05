@@ -2,7 +2,7 @@
 
 > *Read this in other languages: [English](README.md), :kr: [한국어](README.ko.md)*
 
-![](markdown.data/logo.png)
+<p align="center"><img src="https://github.com/j2doll/Qlibxlsxwriter/raw/master/markdown.data/logo.png"></p>
 
 - Qlibxlsxwriter는 libxlsxwriter를 Qt에서 사용할 수있는 도우미 프로젝트입니다.
 - libxlsxwriter는 Excel XLSX 파일을 만들기위한 C 라이브러리 입니다. :+1:
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 ```
 
 ## 테스트 환경
-- [테스트 환경](TestEnv.md) 참조.
+- [테스트 환경](TestEnv.md) 참조
 
 ## 라이센스와 링크
 - Qlibxlsxwriter는  MIT license 입니다. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
@@ -77,7 +77,7 @@ int main(int argc, char **argv)
 
 ### :star: <b>QXlsx</b> [https://github.com/j2doll/QXlsx](https://github.com/j2doll/QXlsx)
 
-![](https://github.com/j2doll/QXlsx/raw/master/markdown.data/QXlsx2.jpg)
+<p align="center"><img src="https://github.com/j2doll/QXlsx/raw/master/markdown.data/QXlsx2.jpg"></p>
 
 - QXlsx는 엑셀 파일(*.xlsx)을 읽고 쓰는 라이브러리입니다.
 - QtXlsx가 더이상 지원되지 않기 때문에(2014), QtXlsx에 기반한 새로운 프로젝트를 만들었습니다. (2017-)
@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 
 ### :star: <b>Qxlnt</b> [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
 
-![](https://github.com/j2doll/Qxlnt/raw/master/markdown-data/Concept-QXlnt.jpg)
+<p align="center"><img src="https://github.com/j2doll/Qxlnt/raw/master/markdown-data/Concept-QXlnt.jpg"></p>
 
 - Qxlnt는 xlnt가 Qt에서 사용될 수있게 해주는 도우미 프로젝트입니다.
 - xlnt는 xlsx Excel 파일을 사용하기에 훌륭한 라이브러리입니다. :+1:
