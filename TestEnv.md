@@ -1,4 +1,4 @@
-# Test Environment
+# Tested Environments
 
 | Qt        | OS                          | Compiler                                 | Build   | Hello   |
 | :-------- | --------------------------- | ---------------------------------------- | ------- | ------- |
