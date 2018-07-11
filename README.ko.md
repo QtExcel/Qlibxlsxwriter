@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 - [테스트 환경](TestEnv.md) 참조
 
 ## 라이센스와 링크
-- Qlibxlsxwriter는  MIT license 입니다. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
+- ![https://opensource.org/licenses/MIT](markdown.data/mit-license.png) Qlibxlsxwriter는  MIT license 입니다. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
 - libxlsxwriter는 FreeBSD license 입니다. [https://github.com/jmcnamara/libxlsxwriter](https://github.com/jmcnamara/libxlsxwriter)
 - zlib는 zlib license 입니다. [https://zlib.net/](https://zlib.net/) [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
 
