@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 - See [Tested Environments](TestEnv.md)
 
 ## License and links
-- ![https://opensource.org/licenses/MIT](markdown.data/mit-license.png) Qlibxlsxwriter is under MIT license. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
+- ![](markdown.data/mit-license.png) Qlibxlsxwriter is under MIT license. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
 - libxlsxwriter is under FreeBSD license. [https://github.com/jmcnamara/libxlsxwriter](https://github.com/jmcnamara/libxlsxwriter)
 - zlib is under zlib license. [https://zlib.net/](https://zlib.net/) [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
 
