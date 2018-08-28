@@ -12,7 +12,7 @@
 ```cpp
 // main.cpp
 //
-// Qlibxlsxwriter MIT license     https://github.com/j2doll/Qlibxlsxwriter
+// Qlibxlsxwriter MIT license https://github.com/j2doll/Qlibxlsxwriter
 // libxlsxwriter  FreeBSD license https://github.com/jmcnamara/libxlsxwriter
 
 #include <QCoreApplication>
@@ -21,7 +21,7 @@
 
 int main(int argc, char **argv)
 {
-     QCoreApplication app(argc, argv); // it is a Qt code.
+     QCoreApplication app(argc, argv); // It is a Qt code.
 
      // See Tutorial 1: Create a simple XLSX file.
      // http://libxlsxwriter.github.io/tutorial01.html
@@ -31,6 +31,7 @@ int main(int argc, char **argv)
          char item[32];
          int  cost;
      };
+
      struct expense expenses[] = {
          {"Rent", 1000},
          {"Gas",   100},
@@ -62,7 +63,20 @@ int main(int argc, char **argv)
 }
 ```
 
-## Test Environment
+## How to setup
+
+- Add the following code in your Qt project.
+
+```pro
+YourQtProject.pro
+
+# Set environment values for Qlibxlsxwriter. 
+# You may use default values.
+QLIBXLSXWRITER_PARENTPATH = ../libxlsxwriter/
+include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
+```
+
+## Tested Environment
 - See [Tested Environments](TestEnv.md)
 
 ## License and links

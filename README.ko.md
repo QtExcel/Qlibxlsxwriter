@@ -12,7 +12,7 @@
 ```cpp
 // main.cpp
 //
-// Qlibxlsxwriter MIT license     https://github.com/j2doll/Qlibxlsxwriter
+// Qlibxlsxwriter MIT license https://github.com/j2doll/Qlibxlsxwriter
 // libxlsxwriter  FreeBSD license https://github.com/jmcnamara/libxlsxwriter
 
 #include <QCoreApplication>
@@ -21,7 +21,7 @@
 
 int main(int argc, char **argv)
 {
-     QCoreApplication app(argc, argv); // it is a Qt code.
+     QCoreApplication app(argc, argv); // It is a Qt code.
 
      // See Tutorial 1: Create a simple XLSX file.
      // http://libxlsxwriter.github.io/tutorial01.html
@@ -31,13 +31,13 @@ int main(int argc, char **argv)
          char item[32];
          int  cost;
      };
+     
      struct expense expenses[] = {
          {"Rent", 1000},
          {"Gas",   100},
          {"Food",  300},
          {"Gym",    50},
      };
-
 
     /* Create a workbook and add a worksheet. */
      lxw_workbook  *workbook  = workbook_new("tutorial01.xlsx");
@@ -60,6 +60,19 @@ int main(int argc, char **argv)
      /* Save the workbook and free any allocated memory. */
      return workbook_close(workbook);
 }
+```
+
+## 설정 방법
+
+- 다음 코드를 여러분의 Qt 프로젝트에 추가하세요.
+
+```pro
+YourQtProject.pro
+
+# Qlibxlsxwriter의 값을 설정하십시오.
+# 기본값을 사용하셔도 됩니다.
+QLIBXLSXWRITER_PARENTPATH = ../libxlsxwriter/
+include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 ```
 
 ## 테스트 환경
