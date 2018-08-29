@@ -89,10 +89,6 @@ $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.c
 #############
 # minizip
 
-# zlib
-HEADERS += zlib.h
-LIBS += -lz
-
 INCLUDEPATH += \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/
 
@@ -115,15 +111,31 @@ $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.c
 
 linux-g++ {
     # linux gcc
+
+    # zlib
+    HEADERS += zlib.h
+    LIBS += -lz    
+}
+linux-clang{
+    # linux(or mac os) clang
+
+    # zlib
+    HEADERS += zlib.h
+    LIBS += -lz    
 }
 win32-g++ {
-	# MingW, MSYS, CygWin
+	# MingW / MSYS / CygWin
+
 	DEFINES += USE_FILE32API
 
 	QMAKE_CFLAGS += -static
 	QMAKE_CFLAGS += -static-libgcc
 	QMAKE_CFLAGS += -Wno-char-subscripts
 	QMAKE_CFLAGS += -Wno-long-long
+
+    # zlib
+    HEADERS += zlib.h
+    LIBS += -lz
 }
 win32-msvc* {
     # Visual C++
@@ -132,5 +144,20 @@ win32-msvc* {
 
     SOURCES += \
     $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/iowin32.c
+
+    # zlib
+    HEADERS += zlib.h
+
+    # How to install zlib for msvc easily.
+    # 1) Open *.pro from Visual Studio(VS2017).
+    #   - Visual Studio Menu : 'Qt VS Tools' -> 'Open Qt Project file (.pro)'
+    # 2) Save Visual Studio Solution file (*.sln)
+    # 3) Install zlib-msvc-x64 for Visual Studio 2017+64bit
+    #    - Visual Studio Menu : 'Tools' -> 'NuGet Package Manager' -> 'Package Manager Console'
+    #    - type 'Install-Package zlib-msvc-x64' on Package Manager Console.
+    
+    # Notice>
+    # If your Windows language does not compile with theme.c, 
+    # Then fix theme.c and compile. 
 }
 
