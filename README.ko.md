@@ -75,6 +75,8 @@ QLIBXLSXWRITER_PARENTPATH = ../libxlsxwriter/
 include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 ```
 
+- zlib이 필수적입니다.https://zlib.net
+
 ## 테스트 환경
 - [테스트 환경](TestEnv.md) 참조
 
