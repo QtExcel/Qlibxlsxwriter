@@ -76,6 +76,8 @@ QLIBXLSXWRITER_PARENTPATH = ../libxlsxwriter/
 include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 ```
 
+- zlib is required. https://zlib.net
+
 ## Tested Environment
 - See [Tested Environments](TestEnv.md)
 
