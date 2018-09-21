@@ -4,7 +4,21 @@
 | :-------- | ---------------------------------- | --------------------------------------------------- | ------- | ------- |
 | Qt 5.11.1 | Windows 10 64 bit                  | gcc 5.3.0 / MingW 5.3.0 32bit / make 4.1            | :smile: | :smile: |
 | Qt 5.9.2  | CentOS(Linux) 3.10.0 x86_64        | gcc 4.8.5 / make 3.8.2 / zlib-devel                 | :smile: | :smile: |
-| Qt 5.9.2  | MSYS2                              | gcc                                                 | :smile: | :rage:  |
+| Qt 5.11.1 | MSYS2 x86_64 2018-09-10            | gcc 8.2.0 / make 4.2.1 / zlib-devel 1.2.11          | :smile: | :smile: |
 | Qt 5.11.1 | Mac OS(Darwin Kernel Version 17.7) | Apple LLVM version 9.1.0 (clang-902.0.39.2) / Xcode | :smile: | :smile: |
 | Qt 5.9.2  | Windows 10 64 bit                  | Visual Studio 2017(x64) / zlib-msvc-x64(NuGet)      | :smile: | :smile: |
 
+## Settings for MSYS2
+- Install the dev tools for libxlsxwriter.
+```bash
+pacman -S mingw-w64-x86_64-toolchain git gcc make zlib-devel
+```
+- See [https://github.com/j2doll/Qlibxlsxwriter/issues/1](https://github.com/j2doll/Qlibxlsxwriter/issues/1).
+
+## Settings for Visual Studio 2017
+- Install zlib using NuGet. You may build it yourself using zlib source code, but it will be a very cumbersome task.
+- Go to Visual Studio 2017 Menu. 'Tools' > 'NuGet Package Manager' > 'Package Manager Console'
+- Type installation command. See [https://www.nuget.org/packages/zlib-msvc-x64/](https://www.nuget.org/packages/zlib-msvc-x64/).
+```
+Install-Package zlib-msvc-x64 -Version 1.2.11.8900
+```
