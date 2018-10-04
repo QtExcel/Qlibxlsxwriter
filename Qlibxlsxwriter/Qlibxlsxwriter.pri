@@ -25,6 +25,7 @@ $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter.h
 HEADERS += \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/app.h \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/chart.h \
+$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/chartsheet.h \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/common.h \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/content_types.h \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/core.h \
@@ -45,6 +46,7 @@ $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/xmlwriter.h
 SOURCES += \
 $${QLIBXLSXWRITER_PARENTPATH}/src/app.c \
 $${QLIBXLSXWRITER_PARENTPATH}/src/chart.c \
+$${QLIBXLSXWRITER_PARENTPATH}/src/chartsheet.c \
 $${QLIBXLSXWRITER_PARENTPATH}/src/content_types.c \
 $${QLIBXLSXWRITER_PARENTPATH}/src/core.c \
 $${QLIBXLSXWRITER_PARENTPATH}/src/custom.c \

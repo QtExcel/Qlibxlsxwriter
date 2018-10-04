@@ -47,6 +47,4 @@ int main(int argc, char **argv)
 
      /* Save the workbook and free any allocated memory. */
      return workbook_close(workbook);
-
-    return 0;
 }
