@@ -98,7 +98,7 @@ include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 
 - QXlsx is excel file(*.xlsx) reader/writer library.
 - Because QtXlsx is no longer supported(2014), I created a new project that is based on QtXlsx. (2017-)
-- Development language of QXlsx is C++. (with Qt 5.x)
+- Development language of QXlsx is C++. (with Qt)
 - You don't need to use static library or dynamic shared object using QXlsx. :+1:
 
 ### :star: <b>Qxlnt</b> [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
