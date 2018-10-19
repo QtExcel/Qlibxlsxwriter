@@ -64,6 +64,8 @@ int main(int argc, char **argv)
 
 ## 설정 방법
 
+- zlib이 필수적입니다. [https://zlib.net](https://zlib.net)
+
 - 다음 코드를 여러분의 Qt 프로젝트에 추가하세요.
 
 ```pro
@@ -75,13 +77,13 @@ QLIBXLSXWRITER_PARENTPATH = ../libxlsxwriter/
 include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 ```
 
-- zlib이 필수적입니다.https://zlib.net
+- 자세한 정보는 다음을 참조하세요: [Setting for Qlibxlsxwriter](Setting.md)
 
 ## 테스트 환경
 - [테스트 환경](TestEnv.md) 참조
 
 ## 라이센스와 링크
-- ![](markdown.data/mit-license.png) Qlibxlsxwriter는  MIT license 입니다. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
+- Qlibxlsxwriter는  MIT license 입니다. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
 - libxlsxwriter는 FreeBSD license 입니다. [https://github.com/jmcnamara/libxlsxwriter](https://github.com/jmcnamara/libxlsxwriter)
 - zlib는 zlib license 입니다. [https://zlib.net/](https://zlib.net/) [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
 

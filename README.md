@@ -65,6 +65,8 @@ int main(int argc, char **argv)
 
 ## How to setup
 
+- zlib is required. [https://zlib.net](https://zlib.net)
+
 - Add the following code in your Qt project.
 
 ```pro
@@ -76,13 +78,13 @@ QLIBXLSXWRITER_PARENTPATH = ../libxlsxwriter/
 include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 ```
 
-- zlib is required. https://zlib.net
+- For more information, please see: [Setting for Qlibxlsxwriter](Setting.md)
 
 ## Tested Environment
 - See [Tested Environments](TestEnv.md)
 
 ## License and links
-- ![](markdown.data/mit-license.png) Qlibxlsxwriter is under MIT license. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
+- Qlibxlsxwriter is under MIT license. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
 - libxlsxwriter is under FreeBSD license. [https://github.com/jmcnamara/libxlsxwriter](https://github.com/jmcnamara/libxlsxwriter)
 - zlib is under zlib license. [https://zlib.net/](https://zlib.net/) [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
 
