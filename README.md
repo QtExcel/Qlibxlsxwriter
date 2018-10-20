@@ -6,15 +6,11 @@
 
 - Qlibxlsxwriter is a helper project that allows libxlsxwriter to be used in Qt.
 - libxlsxwriter is a C library for creating Excel XLSX files. :+1:
->
-```
-http://libxlsxwriter.github.io/faq.html
 
+> http://libxlsxwriter.github.io/faq.html
 Q. Can Libxlsxwriter use an existing Excel file as a template?
 No.
-
 Libxlsxwriter is designed only as a file writer. It cannot read or modify an existing Excel file.
-```
 
 ## Sample (Hello World!)
 
