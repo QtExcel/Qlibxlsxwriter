@@ -1,9 +1,9 @@
-#
-#  Qlibxlsxwriter.pri
-#
+#########################
+# Qlibxlsxwriter.pri
+#########################
 # Qlibxlsxwriter MIT license     https://github.com/j2doll/Qlibxlsxwriter
 # libxlsxwriter  FreeBSD license https://github.com/jmcnamara/libxlsxwriter
-#
+#########################
 
 isEmpty(QLIBXLSXWRITER_PARENTPATH) {
     message( 'QLIBXLSXWRITER_PARENTPATH is empty. use default value.' )
@@ -13,7 +13,7 @@ isEmpty(QLIBXLSXWRITER_PARENTPATH) {
     message( $${QLIBXLSXWRITER_PARENTPATH} )
 }
 
-####################
+#########################
 # xlsxwriter
 
 INCLUDEPATH += \
@@ -69,7 +69,7 @@ $${QLIBXLSXWRITER_PARENTPATH}/src/xmlwriter.c
 INCLUDEPATH += \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/
 
-#############
+#########################
 # tmpfileplus
 
 # INCLUDEPATH += \
@@ -88,7 +88,7 @@ $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.c
 #$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/zip.h \
 #$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tmpfileplus.h
 
-#############
+#########################
 # minizip
 
 INCLUDEPATH += \
@@ -111,12 +111,25 @@ $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.c
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/minizip.c \
 # $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/mztools.c
 
+########################################
+# Setting development environment for 
+#  various compiler and operating system
+######################################## 
+
+# https://github.com/j2doll/Qlibxlsxwriter/issues/4#issue-371996348
+# Recommendations from liufeijin
+# If you install with qt5 scr , only add this in your project file pro
+# INCLUDEPATH += $$[QT_INSTALL_HEADERS]/QtZlib
+
 linux-g++ {
     # linux gcc
 
+    # Install programs :
+    #  gcc and essential build tool, zlib for development, Qt5
+
     # zlib
     HEADERS += zlib.h
-    LIBS += -lz    
+    LIBS += -lz
 }
 linux-clang{
     # linux(or mac os) clang
@@ -126,18 +139,24 @@ linux-clang{
     LIBS += -lz    
 }
 win32-g++ {
-	# MingW / MSYS / CygWin
+    # MingW / MSYS / CygWin
 
-	DEFINES += USE_FILE32API
+    DEFINES += USE_FILE32API
 
-	QMAKE_CFLAGS += -static
-	QMAKE_CFLAGS += -static-libgcc
-	QMAKE_CFLAGS += -Wno-char-subscripts
-	QMAKE_CFLAGS += -Wno-long-long
+    QMAKE_CFLAGS += -static
+    QMAKE_CFLAGS += -static-libgcc
+    QMAKE_CFLAGS += -Wno-char-subscripts
+    QMAKE_CFLAGS += -Wno-long-long
 
     # zlib
     HEADERS += zlib.h
     LIBS += -lz
+
+    # Settings for MSYS2 with Qt5
+    # Install the dev tools for libxlsxwriter.
+    # pacman -S mingw-w64-x86_64-toolchain git gcc make zlib-devel
+    # See https://github.com/j2doll/Qlibxlsxwriter/issues/1.    
+
 }
 win32-msvc* {
     # Visual C++
@@ -157,7 +176,7 @@ win32-msvc* {
     # 3) Install zlib-msvc-x64 for Visual Studio 2017+64bit
     #    - Visual Studio Menu : 'Tools' -> 'NuGet Package Manager' -> 'Package Manager Console'
     #    - type 'Install-Package zlib-msvc-x64' on Package Manager Console.
-    
+
     # Notice>
     # If your Windows language does not compile with theme.c, 
     # Then fix theme.c and compile. 
