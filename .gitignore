@@ -1,3 +1,6 @@
+# use everything of libxlsxwriter
+!/libxlsxwriter/*
+
 # C++ objects and libs
 *.slo
 *.lo
