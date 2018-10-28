@@ -115,3 +115,9 @@ include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 - Qxlnt is a helper project that allows xlnt to be used in Qt.
 - xlnt is a excellent library for using xlsx Excel files. :+1:
 - I was looking for a way to make it easy to use in Qt. Of course, cmake is compatible with Qt, but it is not convenient to use. So I created Qxlnt.
+
+### :star: <b>QSimpleXlsxWriter</b> [https://github.com/j2doll/QSimpleXlsxWriter](https://github.com/j2doll/QSimpleXlsxWriter)
+
+- Use SimpleXlsxWriter in Qt.
+- SimpleXlsxWriter is C++ library for creating XLSX files for MS Excel 2007 and above.
+
