@@ -68,9 +68,13 @@ int main(int argc, char **argv)
 }
 ```
 
-## 설정 방법
+## 먼저 설치하여야 할 것들
 
-- zlib이 필수적입니다. [https://zlib.net](https://zlib.net)
+- Qt (5 or higher version) [https://www.qt.io](https://www.qt.io)
+
+- zlib [https://zlib.net](https://zlib.net)
+
+## 설정 방법
 
 - 다음 코드를 여러분의 Qt 프로젝트에 추가하세요.
 

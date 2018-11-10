@@ -68,9 +68,13 @@ int main(int argc, char **argv)
 }
 ```
 
-## How to setup
+## Things to install first
 
-- zlib is required. [https://zlib.net](https://zlib.net)
+- Qt (5 or higher version) [https://www.qt.io](https://www.qt.io)
+
+- zlib [https://zlib.net](https://zlib.net)
+
+## How to setup
 
 - Add the following code in your Qt project.
 
