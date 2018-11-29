@@ -10,9 +10,8 @@
 - libxlsxwriter는 Excel XLSX 파일을 만들기 위한 C 라이브러리 입니다. :+1:
 
 > http://libxlsxwriter.github.io/faq.html
-Q. Can Libxlsxwriter use an existing Excel file as a template?
-No.
-Libxlsxwriter is designed only as a file writer. It cannot read or modify an existing Excel file.
+> Q. Can Libxlsxwriter use an existing Excel file as a template?
+> No. Libxlsxwriter is designed only as a file writer. It cannot read or modify an existing Excel file.
 
 
 ## 예제 (헬로우 월드!)
