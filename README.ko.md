@@ -8,10 +8,8 @@
 
 - Qlibxlsxwriter는 libxlsxwriter를 Qt에서 사용할 수있는 도우미 프로젝트입니다.
 - libxlsxwriter는 Excel XLSX 파일을 만들기 위한 C 라이브러리 입니다. :+1:
-
-> http://libxlsxwriter.github.io/faq.html
-> Q. Can Libxlsxwriter use an existing Excel file as a template?
-> No. Libxlsxwriter is designed only as a file writer. It cannot read or modify an existing Excel file.
+    - Q> Libxlsxwriter가 기존 Excel 파일을 템플릿으로 사용할 수 있습니까?
+    - A> 아닙니다. Libxlsxwriter는 파일 작성용으로만 설계되었습니다. 기존 Excel 파일을 읽거나 수정할 수 없습니다. See [FAQ](http://libxlsxwriter.github.io/faq.html) for more information.
 
 
 ## 예제 (헬로우 월드!)
