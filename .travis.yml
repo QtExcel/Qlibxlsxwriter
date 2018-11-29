@@ -17,6 +17,8 @@ before_install:
  - sudo apt-get install zlib1g
  - sudo apt-get install zlib1g-dev
 
+ - sudo apt-get install build-essential
+
  # Qt 5
  - sudo apt-get install qtbase5-dev qtdeclarative5-dev 
  - sudo apt-get install qt5-default qttools5-dev-tools 
