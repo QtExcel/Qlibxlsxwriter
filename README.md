@@ -4,6 +4,8 @@
 
 <p align="center"><img src="https://github.com/j2doll/Qlibxlsxwriter/raw/master/markdown.data/logo.png"></p>
 
+[![Build Status](https://travis-ci.com/j2doll/Qlibxlsxwriter.svg?branch=master)](https://travis-ci.com/j2doll/Qlibxlsxwriter)
+
 - Qlibxlsxwriter is a helper project that allows libxlsxwriter to be used in Qt.
 - libxlsxwriter is a C library for creating Excel XLSX files. :+1:
 
