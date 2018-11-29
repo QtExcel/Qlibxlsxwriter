@@ -22,7 +22,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 
 # Set environment values for Qlibxlsxwriter. You may use default values.
-#  QLIBXLSXWRITER_PARENTPATH = ../libxlsxwriter/
+QLIBXLSXWRITER_PARENTPATH = ../libxlsxwriter/
 include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 
 SOURCES += \
