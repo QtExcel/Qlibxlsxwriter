@@ -121,7 +121,7 @@ $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.c
 # If you install with qt5 scr , only add this in your project file pro
 # INCLUDEPATH += $$[QT_INSTALL_HEADERS]/QtZlib
 
-linux-g++ {
+linux-g++ | linux-g++-64 | linux-g++-32 {
     # linux gcc
 
     # Install programs :
