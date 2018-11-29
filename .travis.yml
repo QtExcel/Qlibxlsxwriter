@@ -1,0 +1,30 @@
+# .travis.yml (Travis CI)
+#
+# Qlibxlsxwriter
+# https://github.com/j2doll/Qlibxlsxwriter
+#
+
+language: c++
+compiler: gcc
+sudo: require
+dist: xenial # Ubuntu Xenial 16.04, Trusty 14.04, Precise 12.04
+
+before_install:
+ - sudo add-apt-repository --yes ppa:ubuntu-sdk-team/ppa
+ - sudo apt-get update -qq
+ - sudo apt-get install qtbase5-dev qtdeclarative5-dev 
+ - sudo apt-get install qt5-default qttools5-dev-tools 
+
+install:
+
+script:
+  # lib
+  - cd Qlibxlsxwriter
+  - qmake Qlibxlsxwriter.pro
+  - make
+
+  # Hello world
+  - cd ../Hello
+  - qmake Hello.pro
+  - make
+  - ./Hello
