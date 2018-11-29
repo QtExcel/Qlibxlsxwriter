@@ -130,13 +130,17 @@ linux-g++ {
     # zlib
     HEADERS += zlib.h
     LIBS += -lz
+
+    message('current type is linux-g++')
 }
-linux-clang{
+linux-clang {
     # linux(or mac os) clang
 
     # zlib
     HEADERS += zlib.h
     LIBS += -lz    
+
+    message('current type is linux-clang')
 }
 win32-g++ {
     # MingW / MSYS / CygWin
@@ -157,6 +161,7 @@ win32-g++ {
     # pacman -S mingw-w64-x86_64-toolchain git gcc make zlib-devel
     # See https://github.com/j2doll/Qlibxlsxwriter/issues/1.    
 
+    message('current type is win32-g++')
 }
 win32-msvc* {
     # Visual C++
@@ -180,5 +185,7 @@ win32-msvc* {
     # Notice>
     # If your Windows language does not compile with theme.c, 
     # Then fix theme.c and compile. 
+
+    message('current type is win32-msvc*')
 }
 

@@ -28,7 +28,7 @@ install:
 script:
 
   # where is libz
-  - /sbin/ldconfig -p| grep libz.so
+  # - /sbin/ldconfig -p| grep libz.so
 
   # lib
   - cd Qlibxlsxwriter
