@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 
 - zlib [https://zlib.net](https://zlib.net)
 
-## How to setup
+## How to setup (Installation)
 
 - Add the following code in your Qt project file(*.pro).
 

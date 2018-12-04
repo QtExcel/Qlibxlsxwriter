@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 
 - zlib [https://zlib.net](https://zlib.net)
 
-## 설정 방법
+## 설정하는 방법 (설치)
 
 - 다음 코드를 여러분의 Qt 프로젝트 파일(*.pro)에 추가하세요.
 
