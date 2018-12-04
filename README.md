@@ -4,8 +4,6 @@
 
 <p align="center"><img src="https://github.com/j2doll/Qlibxlsxwriter/raw/master/markdown.data/logo.png"></p>
 
-[![Build Status](https://travis-ci.com/j2doll/Qlibxlsxwriter.svg?branch=master)](https://travis-ci.com/j2doll/Qlibxlsxwriter)
-
 - Qlibxlsxwriter is a helper project that allows libxlsxwriter to be used in Qt.
 - libxlsxwriter is a C library for creating Excel XLSX files. :+1:
     - Q> Can Libxlsxwriter use an existing Excel file as a template?
@@ -67,7 +65,7 @@ int main(int argc, char **argv)
 }
 ```
 
-## Things to install first
+## Things to install first (Prerequisite)
 
 - Qt (5 or higher version) [https://www.qt.io](https://www.qt.io)
 
@@ -75,10 +73,10 @@ int main(int argc, char **argv)
 
 ## How to setup
 
-- Add the following code in your Qt project.
+- Add the following code in your Qt project file(*.pro).
 
 ```pro
-YourQtProject.pro
+# YourQtProject.pro
 
 # Set environment values for Qlibxlsxwriter. 
 # You may use default values.
@@ -89,7 +87,12 @@ include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 - For more information, please see: [Setting for Qlibxlsxwriter](Setting.md)
 
 ## Tested Environment
-- See [Tested Environments](TestEnv.md)
+
+| Travis CI |
+| :-------: |
+| [![Build Status](https://travis-ci.com/j2doll/Qlibxlsxwriter.svg?branch=master)](https://travis-ci.com/j2doll/Qlibxlsxwriter) |
+
+- See [tested environments](TestEnv.md)
 
 ## License and links
 - Qlibxlsxwriter is under MIT license. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)

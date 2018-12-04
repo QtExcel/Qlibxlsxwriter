@@ -4,8 +4,6 @@
 
 <p align="center"><img src="https://github.com/j2doll/Qlibxlsxwriter/raw/master/markdown.data/logo.png"></p>
 
-[![Build Status](https://travis-ci.com/j2doll/Qlibxlsxwriter.svg?branch=master)](https://travis-ci.com/j2doll/Qlibxlsxwriter)
-
 - Qlibxlsxwriter는 libxlsxwriter를 Qt에서 사용할 수있는 도우미 프로젝트입니다.
 - libxlsxwriter는 Excel XLSX 파일을 만들기 위한 C 라이브러리 입니다. :+1:
     - Q> Libxlsxwriter가 기존 Excel 파일을 템플릿으로 사용할 수 있습니까?
@@ -67,7 +65,7 @@ int main(int argc, char **argv)
 }
 ```
 
-## 먼저 설치하여야 할 것들
+## 먼저 설치하여야 할 것들 (선행 사항)
 
 - Qt (5 or higher version) [https://www.qt.io](https://www.qt.io)
 
@@ -75,10 +73,10 @@ int main(int argc, char **argv)
 
 ## 설정 방법
 
-- 다음 코드를 여러분의 Qt 프로젝트에 추가하세요.
+- 다음 코드를 여러분의 Qt 프로젝트 파일(*.pro)에 추가하세요.
 
 ```pro
-YourQtProject.pro
+# YourQtProject.pro
 
 # Qlibxlsxwriter의 값을 설정하십시오.
 # 기본값을 사용하셔도 됩니다.
@@ -89,6 +87,11 @@ include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 - 자세한 정보는 다음을 참조하세요: [Setting for Qlibxlsxwriter](Setting.md)
 
 ## 테스트 환경
+
+| Travis CI |
+| :-------: |
+| [![Build Status](https://travis-ci.com/j2doll/Qlibxlsxwriter.svg?branch=master)](https://travis-ci.com/j2doll/Qlibxlsxwriter) |
+
 - [테스트 환경](TestEnv.md) 참조
 
 ## 라이센스와 링크
