@@ -2,7 +2,7 @@
 
 > *Read this in other languages: [English](README.md), :kr: [한국어](README.ko.md)*
 
-<p align="center"><img src="https://github.com/j2doll/Qlibxlsxwriter/raw/master/markdown.data/logo.png"></p>
+<p align="center"><img src="https://github.com/QtExcel/Qlibxlsxwriter/raw/master/markdown.data/logo.png"></p>
 
 - Qlibxlsxwriter는 libxlsxwriter를 Qt에서 사용할 수있는 도우미 프로젝트입니다.
 - libxlsxwriter는 Excel XLSX 파일을 만들기 위한 C 라이브러리 입니다. :+1:
@@ -15,7 +15,7 @@
 ```cpp
 // main.cpp
 //
-// Qlibxlsxwriter MIT license https://github.com/j2doll/Qlibxlsxwriter
+// Qlibxlsxwriter MIT license https://github.com/QtExcel/Qlibxlsxwriter
 // libxlsxwriter  FreeBSD license https://github.com/jmcnamara/libxlsxwriter
 
 #include <QCoreApplication>
@@ -90,38 +90,38 @@ include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 
 | Travis CI |
 | :-------: |
-| [![Build Status](https://travis-ci.com/j2doll/Qlibxlsxwriter.svg?branch=master)](https://travis-ci.com/j2doll/Qlibxlsxwriter) |
+| [![Build Status](https://travis-ci.com/QtExcel/Qlibxlsxwriter.svg?branch=master)](https://travis-ci.com/QtExcel/Qlibxlsxwriter) |
 
 - [테스트 환경](TestEnv.md) 참조
 
 ## 라이센스와 링크
-- Qlibxlsxwriter는  MIT license 입니다. [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
+- Qlibxlsxwriter는  MIT license 입니다. [https://github.com/QtExcel/Qxlnt](https://github.com/QtExcel/Qxlnt)
 - libxlsxwriter는 FreeBSD license 입니다. [https://github.com/jmcnamara/libxlsxwriter](https://github.com/jmcnamara/libxlsxwriter)
 - zlib는 zlib license 입니다. [https://zlib.net/](https://zlib.net/) [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
 
 ## :mailbox: 문의
-- 이슈를 남겨주세요. [https://github.com/j2doll/Qlibxlsxwriter/issues](https://github.com/j2doll/Qlibxlsxwriter/issues)
+- 이슈를 남겨주세요. [https://github.com/QtExcel/Qlibxlsxwriter/issues](https://github.com/QtExcel/Qlibxlsxwriter/issues)
 
 ## 비슷한 프로젝트 
 
-### :star: <b>QXlsx</b> [https://github.com/j2doll/QXlsx](https://github.com/j2doll/QXlsx)
+### :star: <b>QXlsx</b> [https://github.com/QtExcel/QXlsx](https://github.com/QtExcel/QXlsx)
 
-<p align="center"><img src="https://github.com/j2doll/QXlsx/raw/master/markdown.data/QXlsx-Desktop.png"></p>
+<p align="center"><img src="https://github.com/QtExcel/QXlsx/raw/master/markdown.data/QXlsx-Desktop.png"></p>
 
 - QXlsx는 엑셀 파일(*.xlsx)을 읽고 쓰는 라이브러리입니다.
 - QtXlsx가 더이상 지원되지 않기 때문에(2014), QtXlsx에 기반한 새로운 프로젝트를 만들었습니다. (2017-)
 - QXlsx는 개발언어로 C++를 사용합니다. (Qt 사용)
 - QXlsx는 정적 또는 동적 라이브러리를 사용하지 않아도 되도록 제작되었습니다. :+1:
 
-### :star: <b>Qxlnt</b> [https://github.com/j2doll/Qxlnt](https://github.com/j2doll/Qxlnt)
+### :star: <b>Qxlnt</b> [https://github.com/QtExcel/Qxlnt](https://github.com/QtExcel/Qxlnt)
 
-<p align="center"><img src="https://github.com/j2doll/Qxlnt/raw/master/markdown-data/Concept-QXlnt.jpg"></p>
+<p align="center"><img src="https://github.com/QtExcel/Qxlnt/raw/master/markdown-data/Concept-QXlnt.jpg"></p>
 
 - Qxlnt는 xlnt가 Qt에서 사용될 수있게 해주는 도우미 프로젝트입니다.
 - xlnt는 xlsx Excel 파일을 사용하기에 훌륭한 라이브러리입니다. :+1:
 - xlnt를 Qt에서 사용하기 쉬운 방법을 찾고 있었습니다. 물론 cmake는 Qt와 호환되지만 사용하기가 쉽지 않습니다. 그래서 Qxlnt를 만들었습니다.
 
-### :star: <b>QSimpleXlsxWriter</b> [https://github.com/j2doll/QSimpleXlsxWriter](https://github.com/j2doll/QSimpleXlsxWriter)
+### :star: <b>QSimpleXlsxWriter</b> [https://github.com/QtExcel/QSimpleXlsxWriter](https://github.com/QtExcel/QSimpleXlsxWriter)
 
 - Use SimpleXlsxWriter in Qt.
 - SimpleXlsxWriter is C++ library for creating XLSX files for MS Excel 2007 and above.
