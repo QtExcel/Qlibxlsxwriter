@@ -97,6 +97,7 @@ include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 ## 라이센스와 링크
 - Qlibxlsxwriter는  MIT license 입니다. [https://github.com/QtExcel/Qxlnt](https://github.com/QtExcel/Qxlnt)
 - libxlsxwriter는 FreeBSD license 입니다. [https://github.com/jmcnamara/libxlsxwriter](https://github.com/jmcnamara/libxlsxwriter)
+   - [John McNamara @jmcnamara](https://github.com/jmcnamara)로부터의 [메시지](https://github.com/QtExcel/Qlibxlsxwriter/issues/6)
 - zlib는 zlib license 입니다. [https://zlib.net/](https://zlib.net/) [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
 
 ## :mailbox: 문의
