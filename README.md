@@ -97,6 +97,7 @@ include(../Qlibxlsxwriter/Qlibxlsxwriter.pri)
 ## License and links
 - Qlibxlsxwriter is under MIT license. [https://github.com/QtExcel/Qxlnt](https://github.com/QtExcel/Qxlnt)
 - libxlsxwriter is under FreeBSD license. [https://github.com/jmcnamara/libxlsxwriter](https://github.com/jmcnamara/libxlsxwriter)
+   - [A message](https://github.com/QtExcel/Qlibxlsxwriter/issues/6) from [John McNamara @jmcnamara](https://github.com/jmcnamara)
 - zlib is under zlib license. [https://zlib.net/](https://zlib.net/) [https://zlib.net/zlib_license.html](https://zlib.net/zlib_license.html)
 
 ## :mailbox: Contact
