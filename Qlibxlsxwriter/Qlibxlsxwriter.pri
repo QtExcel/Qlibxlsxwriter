@@ -5,6 +5,8 @@
 # libxlsxwriter  FreeBSD license https://github.com/jmcnamara/libxlsxwriter
 #########################
 
+msvc:QMAKE_CXXFLAGS += /utf-8
+
 isEmpty(QLIBXLSXWRITER_PARENTPATH) {
     message( 'QLIBXLSXWRITER_PARENTPATH is empty. use default value.' )
     QLIBXLSXWRITER_PARENTPATH = ../libxlsxwriter/

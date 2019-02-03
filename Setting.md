@@ -17,10 +17,19 @@ pacman -S mingw-w64-x86_64-toolchain git gcc make zlib-devel
 - See [https://github.com/j2doll/Qlibxlsxwriter/issues/1](https://github.com/j2doll/Qlibxlsxwriter/issues/1).
 
 ## Settings for Visual Studio 2017 with Qt5
-- Install zlib using NuGet. You may build it yourself using zlib source code, but it will be a very cumbersome task.
-- Go to Visual Studio 2017 Menu. 'Tools' > 'NuGet Package Manager' > 'Package Manager Console'
-- Type installation command. 
-```powershell
-Install-Package zlib-msvc-x64 -Version 1.2.11.8900
-```
-- See [https://www.nuget.org/packages/zlib-msvc-x64/](https://www.nuget.org/packages/zlib-msvc-x64/) for more information.
+
+1. 'Qt VS Tools' / 'Open Qt Project File (*.pro)' 
+
+2. Save *.sln and *.vcxproj
+
+3. 'Tools' / 'NuGet Package Manager' / 'Package Manager Console'
+ 
+4. type 'Install-Package zlib-msvc-x64 -Version 1.2.11.8900' in 'Package Manager Console'.
+
+ - See https://www.nuget.org/packages/zlib-msvc-x64/ for more information.
+
+ :boom: If follwing Error Message is found, youe must install zlib-dev for Visual Studio.
+  - 'Cannot open include file: 'zlib.h': No such file or directory'
+
+5. Build project 
+
