@@ -26,10 +26,10 @@ pacman -S mingw-w64-x86_64-toolchain git gcc make zlib-devel
  
 4. type 'Install-Package zlib-msvc-x64 -Version 1.2.11.8900' in 'Package Manager Console'.
 
- - See https://www.nuget.org/packages/zlib-msvc-x64/ for more information.
+   - See https://www.nuget.org/packages/zlib-msvc-x64/ for more information.
 
- :boom: If follwing Error Message is found, youe must install zlib-dev for Visual Studio.
-  - 'Cannot open include file: 'zlib.h': No such file or directory'
+   - :boom: If follwing Error Message is found, youe must install zlib-dev for Visual Studio.
+       - 'Cannot open include file: 'zlib.h': No such file or directory'
 
 5. Build project 
 
