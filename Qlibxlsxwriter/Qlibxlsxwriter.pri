@@ -65,7 +65,7 @@ $${QLIBXLSXWRITER_PARENTPATH}/src/worksheet.c \
 $${QLIBXLSXWRITER_PARENTPATH}/src/xmlwriter.c
 
 #########################
-# third party : minizip, tmpfileplus
+# third party : minizip, tmpfileplus, md5
 
 INCLUDEPATH += \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/
@@ -95,6 +95,15 @@ SOURCES += \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/zip.c \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/unzip.c \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.c
+
+#
+# md5
+
+HEADERS += \
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/md5/md5.h
+
+SOURCES += \
+$${QLIBXLSXWRITER_PARENTPATH}/third_party/md5/md5.c
 
 ########################################
 # Setting development environment for 
