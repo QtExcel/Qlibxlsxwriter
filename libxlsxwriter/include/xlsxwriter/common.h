@@ -25,6 +25,14 @@
 #define STATIC
 #endif
 
+#ifdef __GNUC__
+#define DEPRECATED(func, msg) func __attribute__ ((deprecated(msg)))
+#elif defined(_MSC_VER)
+#define DEPRECATED(func, msg) __declspec(deprecated, msg) func
+#else
+#define DEPRECATED(func, msg) func
+#endif
+
 /** Integer data type to represent a row value. Equivalent to `uint32_t`.
  *
  * The maximum row in Excel is 1,048,576.
@@ -125,6 +133,9 @@ typedef enum lxw_error {
     /** Worksheet row or column index out of range. */
     LXW_ERROR_WORKSHEET_INDEX_OUT_OF_RANGE,
 
+    /** Maximum hyperlink length (2079) exceeded. */
+    LXW_ERROR_WORKSHEET_MAX_URL_LENGTH_EXCEEDED,
+
     /** Maximum number of worksheet URLs (65530) exceeded. */
     LXW_ERROR_WORKSHEET_MAX_NUMBER_URLS_EXCEEDED,
 
@@ -163,6 +174,9 @@ enum lxw_custom_property_types {
     LXW_CUSTOM_BOOLEAN,
     LXW_CUSTOM_DATETIME
 };
+
+/* Size of MD5 byte arrays. */
+#define LXW_MD5_SIZE              16
 
 /* Excel sheetname max of 31 chars. */
 #define LXW_SHEETNAME_MAX         31

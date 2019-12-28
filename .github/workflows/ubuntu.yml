@@ -1,0 +1,35 @@
+name: Ubuntu
+
+on: 
+  push:
+    paths-ignore:
+      - 'README.md'
+      - 'README.ko.md'
+      - 'LICENSE'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
+      - 'README.ko.md'
+      - 'LICENSE'
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04]
+        qt_arch: [gcc_64]
+    steps:
+      - name: Install Qt
+        run : |
+          sudo apt-get install build-essential libfontconfig1 mesa-common-dev libglu1-mesa-dev cmake qtdeclarative5-dev qml-module-qtquick-controls qtbase5-dev qtcreator qt5-default libqt5serialport5-dev qtbase5-private-dev qtdeclarative5-private-dev -y
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Build Project
+        run: |
+          cd Hello
+          qmake
+          make
+          ./Hello
+          

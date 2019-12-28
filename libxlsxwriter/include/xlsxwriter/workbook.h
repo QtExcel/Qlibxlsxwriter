@@ -57,6 +57,7 @@
 /* Define the tree.h RB structs for the red-black head types. */
 RB_HEAD(lxw_worksheet_names, lxw_worksheet_name);
 RB_HEAD(lxw_chartsheet_names, lxw_chartsheet_name);
+RB_HEAD(lxw_image_md5s, lxw_image_md5);
 
 /* Define the queue.h structs for the workbook lists. */
 STAILQ_HEAD(lxw_sheets, lxw_sheet);
@@ -65,7 +66,7 @@ STAILQ_HEAD(lxw_chartsheets, lxw_chartsheet);
 STAILQ_HEAD(lxw_charts, lxw_chart);
 TAILQ_HEAD(lxw_defined_names, lxw_defined_name);
 
-/* TODO */
+/* Struct to hold the 2 sheet types. */
 typedef struct lxw_sheet {
     uint8_t is_chartsheet;
 
@@ -93,6 +94,14 @@ typedef struct lxw_chartsheet_name {
     RB_ENTRY (lxw_chartsheet_name) tree_pointers;
 } lxw_chartsheet_name;
 
+/* Struct to represent an image MD5/ID pair. */
+typedef struct lxw_image_md5 {
+    uint32_t id;
+    char *md5;
+
+    RB_ENTRY (lxw_image_md5) tree_pointers;
+} lxw_image_md5;
+
 /* Wrapper around RB_GENERATE_STATIC from tree.h to avoid unused function
  * warnings and to avoid portability issues with the _unused attribute. */
 #define LXW_RB_GENERATE_WORKSHEET_NAMES(name, type, field, cmp)  \
@@ -116,6 +125,17 @@ typedef struct lxw_chartsheet_name {
     RB_GENERATE_MINMAX(name, type, field, static)                \
     /* Add unused struct to allow adding a semicolon */          \
     struct lxw_rb_generate_charsheet_names{int unused;}
+
+#define LXW_RB_GENERATE_IMAGE_MD5S(name, type, field, cmp) \
+    RB_GENERATE_INSERT_COLOR(name, type, field, static)          \
+    RB_GENERATE_REMOVE_COLOR(name, type, field, static)          \
+    RB_GENERATE_INSERT(name, type, field, cmp, static)           \
+    RB_GENERATE_REMOVE(name, type, field, static)                \
+    RB_GENERATE_FIND(name, type, field, cmp, static)             \
+    RB_GENERATE_NEXT(name, type, field, static)                  \
+    RB_GENERATE_MINMAX(name, type, field, static)                \
+    /* Add unused struct to allow adding a semicolon */          \
+    struct lxw_rb_generate_image_md5s{int unused;}
 
 /**
  * @brief Macro to loop over all the worksheets in a workbook.
@@ -158,7 +178,7 @@ typedef struct lxw_defined_name {
 } lxw_defined_name;
 
 /**
- * Workbook document properties.
+ * Workbook document properties. Set any unused fields to NULL or 0.
  */
 typedef struct lxw_doc_properties {
     /** The title of the Excel Document. */
@@ -188,9 +208,13 @@ typedef struct lxw_doc_properties {
     /** The status of the Excel Document. */
     char *status;
 
-    /** The hyperlink base url of the Excel Document. */
+    /** The hyperlink base URL of the Excel Document. */
     char *hyperlink_base;
 
+    /** The file creation date/time shown in Excel. This defaults to the
+     * current time and date if set to 0. If you wish to create files that are
+     * binary equivalent (for the same input data) then you should set this
+     * creation date/time to a known value. */
     time_t created;
 
 } lxw_doc_properties;
@@ -254,6 +278,7 @@ typedef struct lxw_workbook {
     struct lxw_chartsheets *chartsheets;
     struct lxw_worksheet_names *worksheet_names;
     struct lxw_chartsheet_names *chartsheet_names;
+    struct lxw_image_md5s *image_md5s;
     struct lxw_charts *charts;
     struct lxw_charts *ordered_charts;
     struct lxw_formats *formats;
@@ -278,6 +303,7 @@ typedef struct lxw_workbook {
     uint16_t border_count;
     uint16_t fill_count;
     uint8_t optimize;
+    uint16_t max_url_length;
 
     uint8_t has_png;
     uint8_t has_jpeg;
@@ -287,6 +313,8 @@ typedef struct lxw_workbook {
 
     char *vba_project;
     char *vba_codename;
+
+    lxw_format *default_url_format;
 
 } lxw_workbook;
 
@@ -363,13 +391,6 @@ lxw_workbook *workbook_new(const char *filename);
  *
  */
 lxw_workbook *workbook_new_opt(const char *filename,
-                               lxw_workbook_options *options);
-
-/* Deprecated function name for backwards compatibility. */
-lxw_workbook *new_workbook(const char *filename);
-
-/* Deprecated function name for backwards compatibility. */
-lxw_workbook *new_workbook_opt(const char *filename,
                                lxw_workbook_options *options);
 
 /**
@@ -594,10 +615,11 @@ lxw_error workbook_close(lxw_workbook *workbook);
  * - `keywords`
  * - `comments`
  * - `hyperlink_base`
+ * - `created`
  *
  * The properties are specified via a `lxw_doc_properties` struct. All the
- * members are `char *` and they are all optional. An example of how to create
- * and pass the properties is:
+ * fields are all optional. An example of how to create and pass the
+ * properties is:
  *
  * @code
  *     // Create a properties structure and set some of the fields.
@@ -618,6 +640,12 @@ lxw_error workbook_close(lxw_workbook *workbook);
  * @endcode
  *
  * @image html doc_properties.png
+ *
+ * The `created` parameter sets the file creation date/time shown in
+ * Excel. This defaults to the current time and date if set to 0. If you wish
+ * to create files that are binary equivalent (for the same input data) then
+ * you should set this creation date/time to a known value using a `time_t`
+ * value.
  *
  */
 lxw_error workbook_set_properties(lxw_workbook *workbook,
@@ -771,12 +799,31 @@ lxw_error workbook_set_custom_property_datetime(lxw_workbook *workbook,
  * @endcode
  *
  * The rules for names in Excel are explained in the
- * [Microsoft Office
-documentation](http://office.microsoft.com/en-001/excel-help/define-and-use-names-in-formulas-HA010147120.aspx).
+ * [Microsoft Office documentation](http://office.microsoft.com/en-001/excel-help/define-and-use-names-in-formulas-HA010147120.aspx).
  *
  */
 lxw_error workbook_define_name(lxw_workbook *workbook, const char *name,
                                const char *formula);
+
+/**
+ * @brief Get the default URL format used with `worksheet_write_url()`.
+ *
+ * @param  workbook Pointer to a lxw_workbook instance.
+ * @return A lxw_format instance that has hyperlink properties set.
+ *
+ * This function returns a lxw_format instance that is used for the default
+ * blue underline hyperlink in the `worksheet_write_url()` function when a
+ * format isn't specified:
+ *
+ * @code
+ *     lxw_format *url_format = workbook_get_default_url_format(workbook);
+ * @endcode
+ *
+ * The format is the hyperlink style defined by Excel for the default theme.
+ * This format is only ever required when overwriting a string URL with
+ * data of a different type. See the example below.
+ */
+lxw_format *workbook_get_default_url_format(lxw_workbook *workbook);
 
 /**
  * @brief Get a worksheet object from its name.
@@ -909,6 +956,13 @@ lxw_error workbook_set_vba_name(lxw_workbook *workbook, const char *name);
 void lxw_workbook_free(lxw_workbook *workbook);
 void lxw_workbook_assemble_xml_file(lxw_workbook *workbook);
 void lxw_workbook_set_default_xf_indices(lxw_workbook *workbook);
+void workbook_unset_default_url_format(lxw_workbook *workbook);
+
+DEPRECATED(lxw_workbook *new_workbook(const char *filename),
+           "use 'workbook_new' instead");
+DEPRECATED(lxw_workbook *new_workbook_opt(const char *filename,
+                                          lxw_workbook_options *options),
+           "use 'workbook_new_opt()' instead");
 
 /* Declarations required for unit testing. */
 #ifdef TESTING
