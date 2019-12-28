@@ -1,12 +1,11 @@
 #########################
 # Qlibxlsxwriter.pri
-#########################
-# Qlibxlsxwriter MIT license     https://github.com/j2doll/Qlibxlsxwriter
-# libxlsxwriter  FreeBSD license https://github.com/jmcnamara/libxlsxwriter
-#########################
+#
 
+# for Visual C++
 msvc:QMAKE_CXXFLAGS += /utf-8
 
+# set paths(directories) of Qlibxlsxwriter (or, use default path)
 isEmpty(QLIBXLSXWRITER_PARENTPATH) {
     message( 'QLIBXLSXWRITER_PARENTPATH is empty. use default value.' )
     QLIBXLSXWRITER_PARENTPATH = ../libxlsxwriter/
@@ -71,11 +70,8 @@ $${QLIBXLSXWRITER_PARENTPATH}/src/xmlwriter.c
 INCLUDEPATH += \
 $${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/
 
-#########################
+#
 # tmpfileplus
-
-# INCLUDEPATH += \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/
 
 HEADERS += \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.h
@@ -83,14 +79,7 @@ $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.h
 SOURCES += \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/tmpfileplus/tmpfileplus.c
 
-#HEADERS += \
-#$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tree.h \
-#$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/queue.h \
-#$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/ioapi.h \
-#$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/zip.h \
-#$${QLIBXLSXWRITER_PARENTPATH}/include/xlsxwriter/third_party/tmpfileplus.h
-
-#########################
+#
 # minizip
 
 INCLUDEPATH += \
@@ -102,16 +91,10 @@ $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/unzip.h \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.h \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/crypt.h
 
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/mztools.h
-
 SOURCES += \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/zip.c \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/unzip.c \
 $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/ioapi.c
-
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/miniunz.c \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/minizip.c \
-# $${QLIBXLSXWRITER_PARENTPATH}/third_party/minizip/mztools.c
 
 ########################################
 # Setting development environment for 
