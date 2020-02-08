@@ -1,7 +1,7 @@
 /*
  * libxlsxwriter
  *
- * Copyright 2014-2019, John McNamara, jmcnamara@cpan.org. See LICENSE.txt.
+ * Copyright 2014-2020, John McNamara, jmcnamara@cpan.org. See LICENSE.txt.
  */
 
 /**
@@ -18,7 +18,7 @@
 #include "xlsxwriter/format.h"
 #include "xlsxwriter/utility.h"
 
-#define LXW_VERSION "0.9.1"
-#define LXW_VERSION_ID 91
+#define LXW_VERSION "0.9.4"
+#define LXW_VERSION_ID 94
 
 #endif /* __LXW_XLSXWRITER_H__ */
