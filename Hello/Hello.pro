@@ -1,8 +1,6 @@
 #
 # Hello.pro
 #
-# Qlibxlsxwriter MIT license     https://github.com/j2doll/Qlibxlsxwriter
-# libxlsxwriter  FreeBSD license https://github.com/jmcnamara/libxlsxwriter
 
 TARGET = Hello
 

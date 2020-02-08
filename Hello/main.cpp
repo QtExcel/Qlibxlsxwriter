@@ -1,8 +1,6 @@
 // main.cpp
-//
-// Qlibxlsxwriter MIT license     https://github.com/j2doll/Qlibxlsxwriter
-// libxlsxwriter  FreeBSD license https://github.com/jmcnamara/libxlsxwriter
 
+#include <QtGlobal>
 #include <QCoreApplication>
 
 #include "xlsxwriter.h"

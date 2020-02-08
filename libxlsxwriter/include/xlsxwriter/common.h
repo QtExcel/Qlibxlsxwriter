@@ -1,7 +1,7 @@
 /*
  * libxlsxwriter
  *
- * Copyright 2014-2019, John McNamara, jmcnamara@cpan.org. See LICENSE.txt.
+ * Copyright 2014-2020, John McNamara, jmcnamara@cpan.org. See LICENSE.txt.
  */
 
 /**
@@ -9,7 +9,7 @@
  *
  * @brief Common functions and defines for the libxlsxwriter library.
  *
- * <!-- Copyright 2014-2019, John McNamara, jmcnamara@cpan.org -->
+ * <!-- Copyright 2014-2020, John McNamara, jmcnamara@cpan.org -->
  *
  */
 #ifndef __LXW_COMMON_H__
@@ -25,7 +25,7 @@
 #define STATIC
 #endif
 
-#ifdef __GNUC__
+#if __GNUC__ >= 5
 #define DEPRECATED(func, msg) func __attribute__ ((deprecated(msg)))
 #elif defined(_MSC_VER)
 #define DEPRECATED(func, msg) __declspec(deprecated, msg) func
@@ -93,6 +93,9 @@ typedef enum lxw_error {
 
     /** Unknown zip error when closing xlsx file. */
     LXW_ERROR_ZIP_CLOSE,
+
+    /** Feature is not currently supported in this configuration. */
+    LXW_ERROR_FEATURE_NOT_SUPPORTED,
 
     /** NULL function parameter ignored. */
     LXW_ERROR_NULL_PARAMETER_IGNORED,

@@ -1,7 +1,7 @@
 /*
  * libxlsxwriter
  *
- * Copyright 2014-2019, John McNamara, jmcnamara@cpan.org. See LICENSE.txt.
+ * Copyright 2014-2020, John McNamara, jmcnamara@cpan.org. See LICENSE.txt.
  */
 
 /**
@@ -55,6 +55,7 @@
 #include "format.h"
 #include "styles.h"
 #include "utility.h"
+#include "relationships.h"
 
 #define LXW_ROW_MAX           1048576
 #define LXW_COL_MAX           16384
@@ -203,6 +204,41 @@ enum lxw_validation_error_types {
     LXW_VALIDATION_ERROR_TYPE_INFORMATION
 };
 
+/** Set the display type for a cell comment. This is hidden by default but
+ *  can be set to visible with the `worksheet_show_comments()` function. */
+enum lxw_comment_display_types {
+    /** Default to the worksheet default which can be hidden or visible.*/
+    LXW_COMMENT_DISPLAY_DEFAULT,
+
+    /** Hide the cell comment. Usually the default. */
+    LXW_COMMENT_DISPLAY_HIDDEN,
+
+    /** Show the cell comment. Can also be set for the worksheet with the
+     *  `worksheet_show_comments()` function.*/
+    LXW_COMMENT_DISPLAY_VISIBLE
+};
+
+/** Options to control the positioning of worksheet objects such as images
+ *  or charts. See @ref working_with_object_positioning. */
+enum lxw_object_position {
+
+    /** Default positioning for the object. */
+    LXW_OBJECT_POSITION_DEFAULT,
+
+    /** Move and size with the worksheet object with the cells. */
+    LXW_OBJECT_MOVE_AND_SIZE,
+
+    /** Move but don't size with the worksheet object with the cells. */
+    LXW_OBJECT_MOVE_DONT_SIZE,
+
+    /** Don't move or size the worksheet object with the cells. */
+    LXW_OBJECT_DONT_MOVE_DONT_SIZE,
+
+    /** Same as #LXW_OBJECT_MOVE_AND_SIZE except libxlsxwriter applies hidden
+     *  cells after the object is inserted. */
+    LXW_OBJECT_MOVE_AND_SIZE_AFTER
+};
+
 enum cell_types {
     NUMBER_CELL = 1,
     STRING_CELL,
@@ -212,6 +248,7 @@ enum cell_types {
     ARRAY_FORMULA_CELL,
     BLANK_CELL,
     BOOLEAN_CELL,
+    COMMENT,
     HYPERLINK_URL,
     HYPERLINK_INTERNAL,
     HYPERLINK_EXTERNAL
@@ -260,14 +297,14 @@ struct lxw_table_rows {
     struct lxw_rb_generate_cell{int unused;}
 
 #define LXW_RB_GENERATE_DRAWING_REL_IDS(name, type, field, cmp) \
-    RB_GENERATE_INSERT_COLOR(name, type, field, static)          \
-    RB_GENERATE_REMOVE_COLOR(name, type, field, static)          \
-    RB_GENERATE_INSERT(name, type, field, cmp, static)           \
-    RB_GENERATE_REMOVE(name, type, field, static)                \
-    RB_GENERATE_FIND(name, type, field, cmp, static)             \
-    RB_GENERATE_NEXT(name, type, field, static)                  \
-    RB_GENERATE_MINMAX(name, type, field, static)                \
-    /* Add unused struct to allow adding a semicolon */          \
+    RB_GENERATE_INSERT_COLOR(name, type, field, static)         \
+    RB_GENERATE_REMOVE_COLOR(name, type, field, static)         \
+    RB_GENERATE_INSERT(name, type, field, cmp, static)          \
+    RB_GENERATE_REMOVE(name, type, field, static)               \
+    RB_GENERATE_FIND(name, type, field, cmp, static)            \
+    RB_GENERATE_NEXT(name, type, field, static)                 \
+    RB_GENERATE_MINMAX(name, type, field, static)               \
+    /* Add unused struct to allow adding a semicolon */         \
     struct lxw_rb_generate_drawing_rel_ids{int unused;}
 
 STAILQ_HEAD(lxw_merged_ranges, lxw_merged_range);
@@ -275,6 +312,7 @@ STAILQ_HEAD(lxw_selections, lxw_selection);
 STAILQ_HEAD(lxw_data_validations, lxw_data_val_obj);
 STAILQ_HEAD(lxw_image_props, lxw_object_properties);
 STAILQ_HEAD(lxw_chart_props, lxw_object_properties);
+STAILQ_HEAD(lxw_comment_objs, lxw_vml_obj);
 
 /**
  * @brief Options for rows and columns.
@@ -585,7 +623,8 @@ typedef struct lxw_image_options {
     /** Y scale of the image as a decimal. */
     double y_scale;
 
-    /** Object position - not implemented yet.  Set to 0.*/
+    /** Object position - use one of the values of #lxw_object_position.
+     *  See @ref working_with_object_positioning.*/
     uint8_t object_position;
 
     /** Optional description of the image. Defaults to the image filename
@@ -621,7 +660,8 @@ typedef struct lxw_chart_options {
     /** Y scale of the chart as a decimal. */
     double y_scale;
 
-    /** Object position - not implemented yet. Set to 0. */
+    /** Object position - use one of the values of #lxw_object_position.
+     *  See @ref working_with_object_positioning.*/
     uint8_t object_position;
 
 } lxw_chart_options;
@@ -657,6 +697,114 @@ typedef struct lxw_object_properties {
 
     STAILQ_ENTRY (lxw_object_properties) list_pointers;
 } lxw_object_properties;
+
+/**
+ * @brief Options for inserted comments.
+ *
+ * Options for modifying comments inserted via `worksheet_write_comment_opt()`.
+ *
+ */
+typedef struct lxw_comment_options {
+
+    /** This option is used to make a cell comment visible when the worksheet
+     *  is opened. The default behavior in Excel is that comments are
+     *  initially hidden. However, it is also possible in Excel to make
+     *  individual comments or all comments visible.  You can make all
+     *  comments in the worksheet visible using the
+     *  `worksheet_show_comments()` function. Defaults to
+     *  LXW_COMMENT_DISPLAY_DEFAULT. See also @ref ww_comments_visible. */
+    uint8_t visible;
+
+    /** This option is used to indicate the author of the cell comment. Excel
+     *  displays the author in the status bar at the bottom of the
+     *  worksheet. The default author for all cell comments in a worksheet can
+     *  be set using the `worksheet_set_comments_author()` function. Set to
+     *  NULL if not required.  See also @ref ww_comments_author. */
+    char *author;
+
+    /** This option is used to set the width of the cell comment box
+     *  explicitly in pixels. The default width is 128 pixels. See also @ref
+     *  ww_comments_width. */
+    uint16_t width;
+
+    /** This option is used to set the height of the cell comment box
+     *  explicitly in pixels. The default height is 74 pixels.  See also @ref
+     *  ww_comments_height. */
+    uint16_t height;
+
+    /** X scale of the comment as a decimal. See also
+     * @ref ww_comments_x_scale. */
+    double x_scale;
+
+    /** Y scale of the comment as a decimal. See also
+     * @ref ww_comments_y_scale. */
+    double y_scale;
+
+    /** This option is used to set the background color of cell comment
+     *  box. The color should be an RGB integer value, see @ref
+     *  working_with_colors. See also @ref ww_comments_color. */
+    lxw_color_t color;
+
+    /** This option is used to set the font for the comment. The default font
+     *  is 'Tahoma'.  See also @ref ww_comments_font_name. */
+    char *font_name;
+
+     /** This option is used to set the font size for the comment. The default
+      * is 8. See also @ref ww_comments_font_size. */
+    double font_size;
+
+    /** This option is used to set the font family number for the comment.
+     *  Not required very often. Set to 0. */
+    uint8_t font_family;
+
+    /** This option is used to set the row in which the comment will
+     *  appear. By default Excel displays comments one cell to the right and
+     *  one cell above the cell to which the comment relates. The `start_row`
+     *  and `start_col` options should both be set to 0 if not used.  See also
+     *  @ref ww_comments_start_row. */
+    lxw_row_t start_row;
+
+    /** This option is used to set the column in which the comment will
+     *   appear. See the `start_row` option for more information and see also
+     *   @ref ww_comments_start_col. */
+    lxw_col_t start_col;
+
+    /** Offset from the left of the cell in pixels. See also
+     * @ref ww_comments_x_offset. */
+    int32_t x_offset;
+
+    /** Offset from the top of the cell in pixels. See also
+     * @ref ww_comments_y_offset. */
+    int32_t y_offset;
+
+} lxw_comment_options;
+
+/* Internal structure for VML object options. */
+typedef struct lxw_vml_obj {
+
+    lxw_row_t row;
+    lxw_col_t col;
+    lxw_row_t start_row;
+    lxw_col_t start_col;
+    int32_t x_offset;
+    int32_t y_offset;
+    uint32_t col_absolute;
+    uint32_t row_absolute;
+    uint32_t width;
+    uint32_t height;
+    lxw_color_t color;
+    uint8_t font_family;
+    uint8_t visible;
+    uint32_t author_id;
+    double font_size;
+    struct lxw_drawing_coords from;
+    struct lxw_drawing_coords to;
+    char *author;
+    char *font_name;
+    char *text;
+    STAILQ_ENTRY (lxw_vml_obj) list_pointers;
+
+} lxw_vml_obj;
 
 /**
  * @brief Header and footer options.
@@ -783,6 +931,7 @@ typedef struct lxw_worksheet {
     FILE *optimize_tmpfile;
     struct lxw_table_rows *table;
     struct lxw_table_rows *hyperlinks;
+    struct lxw_table_rows *comments;
     struct lxw_cell **array;
     struct lxw_merged_ranges *merged_ranges;
     struct lxw_selections *selections;
@@ -790,6 +939,7 @@ typedef struct lxw_worksheet {
     struct lxw_image_props *image_props;
     struct lxw_chart_props *chart_data;
     struct lxw_drawing_rel_ids *drawing_rel_ids;
+    struct lxw_comment_objs *comment_objs;
 
     lxw_row_t dim_rowmin;
     lxw_row_t dim_rowmax;
@@ -902,6 +1052,16 @@ typedef struct lxw_worksheet {
     lxw_drawing *drawing;
     lxw_format *default_url_format;
 
+    uint8_t has_vml;
+    uint8_t has_comments;
+    uint8_t has_header_vml;
+    lxw_rel_tuple *external_vml_comment_link;
+    lxw_rel_tuple *external_comment_link;
+    char *comment_author;
+    char *vml_data_id_str;
+    uint32_t vml_shape_id;
+    uint8_t comment_display_default;
+
     STAILQ_ENTRY (lxw_worksheet) list_pointers;
 
 } lxw_worksheet;
@@ -935,6 +1095,7 @@ typedef struct lxw_row {
     uint8_t row_changed;
     uint8_t data_changed;
     uint8_t height_changed;
+
     struct lxw_table_cells *cells;
 
     /* tree management pointers for tree.h. */
@@ -947,6 +1108,7 @@ typedef struct lxw_cell {
     lxw_col_t col_num;
     enum cell_types type;
     lxw_format *format;
+    lxw_vml_obj *comment;
 
     union {
         double number;
@@ -980,7 +1142,7 @@ extern "C" {
 /**
  * @brief Write a number to a worksheet cell.
  *
- * @param worksheet pointer to a lxw_worksheet instance to be updated.
+ * @param worksheet Pointer to a lxw_worksheet instance to be updated.
  * @param row       The zero indexed row number.
  * @param col       The zero indexed column number.
  * @param number    The number to write to the cell.
@@ -1027,7 +1189,7 @@ lxw_error worksheet_write_number(lxw_worksheet *worksheet,
 /**
  * @brief Write a string to a worksheet cell.
  *
- * @param worksheet pointer to a lxw_worksheet instance to be updated.
+ * @param worksheet Pointer to a lxw_worksheet instance to be updated.
  * @param row       The zero indexed row number.
  * @param col       The zero indexed column number.
  * @param string    String to write to cell.
@@ -1075,7 +1237,7 @@ lxw_error worksheet_write_string(lxw_worksheet *worksheet,
 /**
  * @brief Write a formula to a worksheet cell.
  *
- * @param worksheet pointer to a lxw_worksheet instance to be updated.
+ * @param worksheet Pointer to a lxw_worksheet instance to be updated.
  * @param row       The zero indexed row number.
  * @param col       The zero indexed column number.
  * @param formula   Formula string to write to cell.
@@ -1128,7 +1290,7 @@ lxw_error worksheet_write_formula(lxw_worksheet *worksheet,
 /**
  * @brief Write an array formula to a worksheet cell.
  *
- * @param worksheet pointer to a lxw_worksheet instance to be updated.
+ * @param worksheet Pointer to a lxw_worksheet instance to be updated.
  * @param first_row   The first row of the range. (All zero indexed.)
  * @param first_col   The first column of the range.
  * @param last_row    The last row of the range.
@@ -1187,7 +1349,7 @@ lxw_error worksheet_write_array_formula_num(lxw_worksheet *worksheet,
 /**
  * @brief Write a date or time to a worksheet cell.
  *
- * @param worksheet pointer to a lxw_worksheet instance to be updated.
+ * @param worksheet Pointer to a lxw_worksheet instance to be updated.
  * @param row       The zero indexed row number.
  * @param col       The zero indexed column number.
  * @param datetime  The datetime to write to the cell.
@@ -1218,7 +1380,7 @@ lxw_error worksheet_write_datetime(lxw_worksheet *worksheet,
 
 /**
  *
- * @param worksheet pointer to a lxw_worksheet instance to be updated.
+ * @param worksheet Pointer to a lxw_worksheet instance to be updated.
  * @param row       The zero indexed row number.
  * @param col       The zero indexed column number.
  * @param url       The url to write to the cell.
@@ -1373,7 +1535,7 @@ lxw_error worksheet_write_url_opt(lxw_worksheet *worksheet,
 /**
  * @brief Write a formatted boolean worksheet cell.
  *
- * @param worksheet pointer to a lxw_worksheet instance to be updated.
+ * @param worksheet Pointer to a lxw_worksheet instance to be updated.
  * @param row       The zero indexed row number.
  * @param col       The zero indexed column number.
  * @param value     The boolean value to write to the cell.
@@ -1395,7 +1557,7 @@ lxw_error worksheet_write_boolean(lxw_worksheet *worksheet,
 /**
  * @brief Write a formatted blank worksheet cell.
  *
- * @param worksheet pointer to a lxw_worksheet instance to be updated.
+ * @param worksheet Pointer to a lxw_worksheet instance to be updated.
  * @param row       The zero indexed row number.
  * @param col       The zero indexed column number.
  * @param format    A pointer to a Format instance or NULL.
@@ -1426,7 +1588,7 @@ lxw_error worksheet_write_blank(lxw_worksheet *worksheet,
 /**
  * @brief Write a formula to a worksheet cell with a user defined result.
  *
- * @param worksheet pointer to a lxw_worksheet instance to be updated.
+ * @param worksheet Pointer to a lxw_worksheet instance to be updated.
  * @param row       The zero indexed row number.
  * @param col       The zero indexed column number.
  * @param formula   Formula string to write to cell.
@@ -1475,7 +1637,7 @@ lxw_error worksheet_write_formula_num(lxw_worksheet *worksheet,
 /**
  * @brief Write a "Rich" multi-format string to a worksheet cell.
  *
- * @param worksheet   pointer to a lxw_worksheet instance to be updated.
+ * @param worksheet   Pointer to a lxw_worksheet instance to be updated.
  * @param row         The zero indexed row number.
  * @param col         The zero indexed column number.
  * @param rich_string An array of format/string lxw_rich_string_tuple fragments.
@@ -1546,6 +1708,88 @@ lxw_error worksheet_write_rich_string(lxw_worksheet *worksheet,
                                       lxw_col_t col,
                                       lxw_rich_string_tuple *rich_string[],
                                       lxw_format *format);
+
+/**
+ * @brief Write a comment to a worksheet cell.
+ *
+ * @param worksheet   Pointer to a lxw_worksheet instance to be updated.
+ * @param row         The zero indexed row number.
+ * @param col         The zero indexed column number.
+ * @param string      The comment string to be written.
+ *
+ * @return A #lxw_error code.
+ *
+ * The `%worksheet_write_comment()` function is used to add a comment to a
+ * cell. A comment is indicated in Excel by a small red triangle in the upper
+ * right-hand corner of the cell. Moving the cursor over the red triangle will
+ * reveal the comment.
+ *
+ * The following example shows how to add a comment to a cell:
+ *
+ * @code
+ *     worksheet_write_comment(worksheet, 0, 0, "This is a comment");
+ * @endcode
+ *
+ * @image html comments1.png
+ *
+ * See also @ref working_with_comments
+ *
+ */
+lxw_error worksheet_write_comment(lxw_worksheet *worksheet,
+                                  lxw_row_t row, lxw_col_t col,
+                                  const char *string);
+
+/**
+ * @brief Write a comment to a worksheet cell with options.
+ *
+ * @param worksheet   Pointer to a lxw_worksheet instance to be updated.
+ * @param row         The zero indexed row number.
+ * @param col         The zero indexed column number.
+ * @param string      The comment string to be written.
+ * @param options     #lxw_comment_options to control position and format
+ *                    of the comment.
+ *
+ * @return A #lxw_error code.
+ *
+ * The `%worksheet_write_comment_opt()` function is used to add a comment to a
+ * cell with option that control the position, format and metadata of the
+ * comment. A comment is indicated in Excel by a small red triangle in the
+ * upper right-hand corner of the cell. Moving the cursor over the red
+ * triangle will reveal the comment.
+ *
+ * The following example shows how to add a comment to a cell with options:
+ *
+ * @code
+ *     lxw_comment_options options = {.visible = LXW_COMMENT_DISPLAY_VISIBLE};
+ *
+ *     worksheet_write_comment_opt(worksheet, CELL("C6"), "Hello.", &options);
+ * @endcode
+ *
+ * The following options are available in #lxw_comment_options:
+ *
+ * - `author`
+ * - `visible`
+ * - `width`
+ * - `height`
+ * - `x_scale`
+ * - `y_scale`
+ * - `color`
+ * - `font_name`
+ * - `font_size`
+ * - `start_row`
+ * - `start_col`
+ * - `x_offset`
+ * - `y_offset`
+ *
+ * @image html comments2.png
+ *
+ * Comment options are explained in detail in the @ref ww_comments_properties
+ * section of the docs.
+ */
+lxw_error worksheet_write_comment_opt(lxw_worksheet *worksheet,
+                                      lxw_row_t row, lxw_col_t col,
+                                      const char *string,
+                                      lxw_comment_options *options);
 
 /**
  * @brief Set the properties for a row of cells.
@@ -1843,7 +2087,7 @@ lxw_error worksheet_set_column_opt(lxw_worksheet *worksheet,
  * default height changed due to a font that is larger than the default font
  * size or that has text wrapping turned on. To avoid this you should
  * explicitly set the height of the row using `worksheet_set_row()` if it
- * crosses an inserted image.
+ * crosses an inserted image. See @ref working_with_object_positioning.
  *
  * BMP images are only supported for backward compatibility. In general it is
  * best to avoid BMP images since they aren't compressed. If used, BMP images
@@ -2407,7 +2651,7 @@ void worksheet_split_panes_opt(lxw_worksheet *worksheet,
 /**
  * @brief Set the selected cell or cells in a worksheet:
  *
- * @param worksheet   Pointer to a lxw_worksheet instance to be updated.
+ * @param worksheet   A pointer to a lxw_worksheet instance to be updated.
  * @param first_row   The first row of the range. (All zero indexed.)
  * @param first_col   The first column of the range.
  * @param last_row    The last row of the range.
@@ -3417,6 +3661,44 @@ void worksheet_set_default_row(lxw_worksheet *worksheet, double height,
  */
 lxw_error worksheet_set_vba_name(lxw_worksheet *worksheet, const char *name);
 
+/**
+ * @brief Make all comments in the worksheet visible.
+ *
+ * @param worksheet Pointer to a lxw_worksheet instance.
+ *
+ * This `%worksheet_show_comments()` function is used to make all cell
+ * comments visible when a worksheet is opened:
+ *
+ * @code
+ *     worksheet_show_comments(worksheet);
+ * @endcode
+ *
+ * Individual comments can be made visible or hidden using the `visible`
+ * option of the #lxw_comment_options struct and the `worksheet_write_comment_opt()`
+ * function (see above and @ref ww_comments_visible).
+ */
+void worksheet_show_comments(lxw_worksheet *worksheet);
+
+/**
+ * @brief Set the default author of the cell comments.
+ *
+ * @param worksheet Pointer to a lxw_worksheet instance.
+ * @param author    The name of the comment author.
+ *
+ * This `%worksheet_set_comments_author()` function is used to set the
+ * default author of all cell comments:
+ *
+ * @code
+ *     worksheet_set_comments_author(worksheet, "Jane Gloriana Villanueva")
+ * @endcode
+ *
+ * Individual authors can be set using the `author` option of the
+ * #lxw_comment_options struct and the `worksheet_write_comment_opt()`
+ * function (see above and @ref ww_comments_author).
+ */
+void worksheet_set_comments_author(lxw_worksheet *worksheet,
+                                   const char *author);
+
 lxw_worksheet *lxw_worksheet_new(lxw_worksheet_init_data *init_data);
 void lxw_worksheet_free(lxw_worksheet *worksheet);
 void lxw_worksheet_assemble_xml_file(lxw_worksheet *worksheet);
@@ -3431,9 +3713,14 @@ void lxw_worksheet_prepare_chart(lxw_worksheet *worksheet,
                                  lxw_object_properties *object_props,
                                  uint8_t is_chartsheet);
 
-lxw_row *lxw_worksheet_find_row(lxw_worksheet *worksheet, lxw_row_t row_num);
-lxw_cell *lxw_worksheet_find_cell(lxw_row *row, lxw_col_t col_num);
+uint32_t lxw_worksheet_prepare_vml_objects(lxw_worksheet *worksheet,
+                                           uint32_t vml_data_id,
+                                           uint32_t vml_shape_id,
+                                           uint32_t vml_drawing_id,
+                                           uint32_t comment_id);
 
+lxw_row *lxw_worksheet_find_row(lxw_worksheet *worksheet, lxw_row_t row_num);
+lxw_cell *lxw_worksheet_find_cell_in_row(lxw_row *row, lxw_col_t col_num);
 /*
  * External functions to call intern XML methods shared with chartsheet.
  */

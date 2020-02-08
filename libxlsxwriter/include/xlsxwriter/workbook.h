@@ -1,7 +1,7 @@
 /*
  * libxlsxwriter
  *
- * Copyright 2014-2019, John McNamara, jmcnamara@cpan.org. See LICENSE.txt.
+ * Copyright 2014-2020, John McNamara, jmcnamara@cpan.org. See LICENSE.txt.
  */
 
 /**
@@ -298,6 +298,7 @@ typedef struct lxw_workbook {
     uint16_t num_xf_formats;
     uint16_t num_format_count;
     uint16_t drawing_count;
+    uint16_t comment_count;
 
     uint16_t font_count;
     uint16_t border_count;
@@ -308,6 +309,8 @@ typedef struct lxw_workbook {
     uint8_t has_png;
     uint8_t has_jpeg;
     uint8_t has_bmp;
+    uint8_t has_vml;
+    uint8_t has_comments;
 
     lxw_hash_table *used_xf_formats;
 
@@ -957,12 +960,6 @@ void lxw_workbook_free(lxw_workbook *workbook);
 void lxw_workbook_assemble_xml_file(lxw_workbook *workbook);
 void lxw_workbook_set_default_xf_indices(lxw_workbook *workbook);
 void workbook_unset_default_url_format(lxw_workbook *workbook);
-
-DEPRECATED(lxw_workbook *new_workbook(const char *filename),
-           "use 'workbook_new' instead");
-DEPRECATED(lxw_workbook *new_workbook_opt(const char *filename,
-                                          lxw_workbook_options *options),
-           "use 'workbook_new_opt()' instead");
 
 /* Declarations required for unit testing. */
 #ifdef TESTING
