@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "xlsxwriter.h"
+#include "xlsxwriter/common.h"
 #include "xlsxwriter/third_party/tmpfileplus.h"
 
 char *error_strings[LXW_MAX_ERRNO + 1] = {
@@ -34,7 +35,6 @@ char *error_strings[LXW_MAX_ERRNO + 1] = {
     "Worksheet name cannot contain invalid characters: '[ ] : * ? / \\'",
     "Worksheet name cannot start or end with an apostrophe.",
     "Worksheet name is already in use.",
-    "Worksheet name 'History' is reserved by Excel.",
     "Parameter exceeds Excel's limit of 32 characters.",
     "Parameter exceeds Excel's limit of 128 characters.",
     "Parameter exceeds Excel's limit of 255 characters.",
@@ -314,10 +314,11 @@ lxw_name_to_col_2(const char *col_str)
 }
 
 /*
- * Convert a lxw_datetime struct to an Excel serial date.
+ * Convert a lxw_datetime struct to an Excel serial date, with a 1900
+ * or 1904 epoch.
  */
 double
-lxw_datetime_to_excel_date(lxw_datetime *datetime, uint8_t date_1904)
+lxw_datetime_to_excel_date_epoch(lxw_datetime *datetime, uint8_t date_1904)
 {
     int year = datetime->year;
     int month = datetime->month;
@@ -407,6 +408,15 @@ lxw_datetime_to_excel_date(lxw_datetime *datetime, uint8_t date_1904)
         days++;
 
     return days + seconds;
+}
+
+/*
+ * Convert a lxw_datetime struct to an Excel serial date, for the 1900 epoch.
+ */
+double
+lxw_datetime_to_excel_datetime(lxw_datetime *datetime)
+{
+    return lxw_datetime_to_excel_date_epoch(datetime, LXW_FALSE);
 }
 
 /* Simple strdup() implementation since it isn't ANSI C. */

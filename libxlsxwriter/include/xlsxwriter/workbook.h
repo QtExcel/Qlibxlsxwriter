@@ -279,6 +279,7 @@ typedef struct lxw_workbook {
     struct lxw_worksheet_names *worksheet_names;
     struct lxw_chartsheet_names *chartsheet_names;
     struct lxw_image_md5s *image_md5s;
+    struct lxw_image_md5s *header_image_md5s;
     struct lxw_charts *charts;
     struct lxw_charts *ordered_charts;
     struct lxw_formats *formats;
@@ -296,6 +297,7 @@ typedef struct lxw_workbook {
     uint16_t first_sheet;
     uint16_t active_sheet;
     uint16_t num_xf_formats;
+    uint16_t num_dxf_formats;
     uint16_t num_format_count;
     uint16_t drawing_count;
     uint16_t comment_count;
@@ -313,6 +315,7 @@ typedef struct lxw_workbook {
     uint8_t has_comments;
 
     lxw_hash_table *used_xf_formats;
+    lxw_hash_table *used_dxf_formats;
 
     char *vba_project;
     char *vba_codename;
@@ -428,12 +431,15 @@ lxw_workbook *workbook_new_opt(const char *filename,
  * - The name is less than or equal to 31 UTF-8 characters.
  * - The name doesn't contain any of the characters: ` [ ] : * ? / \ `
  * - The name doesn't start or end with an apostrophe.
- * - The name isn't "History", which is reserved by Excel. (Case insensitive).
  * - The name isn't already in use. (Case insensitive).
  *
  * If any of these errors are encountered the function will return NULL.
  * You can check for valid name using the `workbook_validate_sheet_name()`
  * function.
+ *
+ * @note You should also avoid using the worksheet name "History" (case
+ * insensitive) which is reserved in English language versions of
+ * Excel. Non-English versions may have restrictions on the equivalent word.
  */
 lxw_worksheet *workbook_add_worksheet(lxw_workbook *workbook,
                                       const char *sheetname);
@@ -467,12 +473,15 @@ lxw_worksheet *workbook_add_worksheet(lxw_workbook *workbook,
  * - The name is less than or equal to 31 UTF-8 characters.
  * - The name doesn't contain any of the characters: ` [ ] : * ? / \ `
  * - The name doesn't start or end with an apostrophe.
- * - The name isn't "History", which is reserved by Excel. (Case insensitive).
  * - The name isn't already in use. (Case insensitive).
  *
  * If any of these errors are encountered the function will return NULL.
  * You can check for valid name using the `workbook_validate_sheet_name()`
  * function.
+ *
+ * @note You should also avoid using the worksheet name "History" (case
+ * insensitive) which is reserved in English language versions of
+ * Excel. Non-English versions may have restrictions on the equivalent word.
  *
  * At least one worksheet should be added to a new workbook when creating a
  * chartsheet in order to provide data for the chart. The @ref worksheet.h
@@ -551,6 +560,8 @@ lxw_format *workbook_add_format(lxw_workbook *workbook);
  * | #LXW_CHART_COLUMN_STACKED_PERCENT        | Column chart - percentage stacked.     |
  * | #LXW_CHART_DOUGHNUT                      | Doughnut chart.                        |
  * | #LXW_CHART_LINE                          | Line chart.                            |
+ * | #LXW_CHART_LINE_STACKED                  | Line chart - stacked.                  |
+ * | #LXW_CHART_LINE_STACKED_PERCENT          | Line chart - percentage stacked.       |
  * | #LXW_CHART_PIE                           | Pie chart.                             |
  * | #LXW_CHART_SCATTER                       | Scatter chart.                         |
  * | #LXW_CHART_SCATTER_STRAIGHT              | Scatter chart - straight.              |
@@ -878,7 +889,6 @@ lxw_chartsheet *workbook_get_chartsheet_by_name(lxw_workbook *workbook,
  * - The name is less than or equal to 31 UTF-8 characters.
  * - The name doesn't contain any of the characters: ` [ ] : * ? / \ `
  * - The name doesn't start or end with an apostrophe.
- * - The name isn't "History", which is reserved by Excel. (Case insensitive).
  * - The name isn't already in use. (Case insensitive, see the note below).
  *
  * @code
@@ -888,6 +898,10 @@ lxw_chartsheet *workbook_get_chartsheet_by_name(lxw_workbook *workbook,
  * This function is called by `workbook_add_worksheet()` and
  * `workbook_add_chartsheet()` but it can be explicitly called by the user
  * beforehand to ensure that the sheet name is valid.
+ *
+ * @note You should also avoid using the worksheet name "History" (case
+ * insensitive) which is reserved in English language versions of
+ * Excel. Non-English versions may have restrictions on the equivalent word.
  *
  * @note This function does an ASCII lowercase string comparison to determine
  * if the sheet name is already in use. It doesn't take UTF-8 characters into

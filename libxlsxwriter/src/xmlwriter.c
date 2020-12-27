@@ -228,6 +228,23 @@ lxw_escape_data(const char *data)
 }
 
 /*
+ * Check for control characters in strings.
+ */
+uint8_t
+lxw_has_control_characters(const char *string)
+{
+    while (string) {
+        /* 0xE0 == 0b11100000 masks values > 0x19 == 0b00011111. */
+        if (!(*string & 0xE0) && *string != 0x0A && *string != 0x09)
+            return LXW_TRUE;
+
+        string++;
+    }
+
+    return LXW_FALSE;
+}
+
+/*
  * Escape control characters in strings with _xHHHH_.
  */
 char *

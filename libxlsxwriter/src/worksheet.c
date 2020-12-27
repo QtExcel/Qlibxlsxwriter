@@ -7,6 +7,10 @@
  *
  */
 
+#ifdef USE_FMEMOPEN
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include "xlsxwriter/xmlwriter.h"
 #include "xlsxwriter/worksheet.h"
 #include "xlsxwriter/format.h"
@@ -27,12 +31,20 @@ STATIC int _row_cmp(lxw_row *row1, lxw_row *row2);
 STATIC int _cell_cmp(lxw_cell *cell1, lxw_cell *cell2);
 STATIC int _drawing_rel_id_cmp(lxw_drawing_rel_id *tuple1,
                                lxw_drawing_rel_id *tuple2);
+STATIC int _cond_format_hash_cmp(lxw_cond_format_hash_element *elem_1,
+                                 lxw_cond_format_hash_element *elem_2);
 
 #ifndef __clang_analyzer__
 LXW_RB_GENERATE_ROW(lxw_table_rows, lxw_row, tree_pointers, _row_cmp);
 LXW_RB_GENERATE_CELL(lxw_table_cells, lxw_cell, tree_pointers, _cell_cmp);
 LXW_RB_GENERATE_DRAWING_REL_IDS(lxw_drawing_rel_ids, lxw_drawing_rel_id,
                                 tree_pointers, _drawing_rel_id_cmp);
+LXW_RB_GENERATE_VML_DRAWING_REL_IDS(lxw_vml_drawing_rel_ids,
+                                    lxw_drawing_rel_id, tree_pointers,
+                                    _drawing_rel_id_cmp);
+LXW_RB_GENERATE_COND_FORMAT_HASH(lxw_cond_format_hash,
+                                 lxw_cond_format_hash_element, tree_pointers,
+                                 _cond_format_hash_cmp);
 #endif
 
 /*****************************************************************************
@@ -130,6 +142,10 @@ lxw_worksheet_new(lxw_worksheet_init_data *init_data)
     GOTO_LABEL_ON_MEM_ERROR(worksheet->comment_objs, mem_error);
     STAILQ_INIT(worksheet->comment_objs);
 
+    worksheet->header_image_objs = calloc(1, sizeof(struct lxw_comment_objs));
+    GOTO_LABEL_ON_MEM_ERROR(worksheet->header_image_objs, mem_error);
+    STAILQ_INIT(worksheet->header_image_objs);
+
     worksheet->selections = calloc(1, sizeof(struct lxw_selections));
     GOTO_LABEL_ON_MEM_ERROR(worksheet->selections, mem_error);
     STAILQ_INIT(worksheet->selections);
@@ -152,6 +168,10 @@ lxw_worksheet_new(lxw_worksheet_init_data *init_data)
     GOTO_LABEL_ON_MEM_ERROR(worksheet->drawing_links, mem_error);
     STAILQ_INIT(worksheet->drawing_links);
 
+    worksheet->vml_drawing_links = calloc(1, sizeof(struct lxw_rel_tuples));
+    GOTO_LABEL_ON_MEM_ERROR(worksheet->vml_drawing_links, mem_error);
+    STAILQ_INIT(worksheet->vml_drawing_links);
+
     if (init_data && init_data->optimize) {
         FILE *tmpfile;
 
@@ -171,6 +191,16 @@ lxw_worksheet_new(lxw_worksheet_init_data *init_data)
         calloc(1, sizeof(struct lxw_drawing_rel_ids));
     GOTO_LABEL_ON_MEM_ERROR(worksheet->drawing_rel_ids, mem_error);
     RB_INIT(worksheet->drawing_rel_ids);
+
+    worksheet->vml_drawing_rel_ids =
+        calloc(1, sizeof(struct lxw_drawing_rel_ids));
+    GOTO_LABEL_ON_MEM_ERROR(worksheet->vml_drawing_rel_ids, mem_error);
+    RB_INIT(worksheet->vml_drawing_rel_ids);
+
+    worksheet->conditional_formats =
+        calloc(1, sizeof(struct lxw_cond_format_hash));
+    GOTO_LABEL_ON_MEM_ERROR(worksheet->conditional_formats, mem_error);
+    RB_INIT(worksheet->conditional_formats);
 
     /* Initialize the worksheet dimensions. */
     worksheet->dim_rowmax = 0;
@@ -215,6 +245,13 @@ lxw_worksheet_new(lxw_worksheet_init_data *init_data)
     worksheet->max_url_length = 2079;
     worksheet->comment_display_default = LXW_COMMENT_DISPLAY_HIDDEN;
 
+    worksheet->header_footer_objs[0] = &worksheet->header_left_object_props;
+    worksheet->header_footer_objs[1] = &worksheet->header_center_object_props;
+    worksheet->header_footer_objs[2] = &worksheet->header_right_object_props;
+    worksheet->header_footer_objs[3] = &worksheet->footer_left_object_props;
+    worksheet->header_footer_objs[4] = &worksheet->footer_center_object_props;
+    worksheet->header_footer_objs[5] = &worksheet->footer_right_object_props;
+
     if (init_data) {
         worksheet->name = init_data->name;
         worksheet->quoted_name = init_data->quoted_name;
@@ -237,7 +274,7 @@ mem_error:
 }
 
 /*
- * Free a worksheet data_validation.
+ * Free vml object.
  */
 STATIC void
 _free_vml_object(lxw_vml_obj *vml_obj)
@@ -248,6 +285,8 @@ _free_vml_object(lxw_vml_obj *vml_obj)
     free(vml_obj->author);
     free(vml_obj->font_name);
     free(vml_obj->text);
+    free(vml_obj->image_position);
+    free(vml_obj->name);
 
     free(vml_obj);
 }
@@ -313,6 +352,7 @@ _free_object_properties(lxw_object_properties *object_property)
     free(object_property->tip);
     free(object_property->image_buffer);
     free(object_property->md5);
+    free(object_property->image_position);
     free(object_property);
 }
 
@@ -334,6 +374,24 @@ _free_data_validation(lxw_data_val_obj *data_validation)
     free(data_validation->minimum_formula);
 
     free(data_validation);
+}
+
+/*
+ * Free a worksheet conditional format obj.
+ */
+STATIC void
+_free_cond_format(lxw_cond_format_obj *cond_format)
+{
+    if (!cond_format)
+        return;
+
+    free(cond_format->min_value_string);
+    free(cond_format->mid_value_string);
+    free(cond_format->max_value_string);
+    free(cond_format->type_string);
+    free(cond_format->guid);
+
+    free(cond_format);
 }
 
 /*
@@ -363,11 +421,15 @@ lxw_worksheet_free(lxw_worksheet *worksheet)
     lxw_col_t col;
     lxw_merged_range *merged_range;
     lxw_object_properties *object_props;
+    lxw_vml_obj *header_image_vml;
     lxw_selection *selection;
     lxw_data_val_obj *data_validation;
     lxw_rel_tuple *relationship;
+    lxw_cond_format_obj *cond_format;
     struct lxw_drawing_rel_id *drawing_rel_id;
     struct lxw_drawing_rel_id *next_drawing_rel_id;
+    struct lxw_cond_format_hash_element *cond_format_elem;
+    struct lxw_cond_format_hash_element *next_cond_format_elem;
 
     if (!worksheet)
         return;
@@ -452,6 +514,16 @@ lxw_worksheet_free(lxw_worksheet *worksheet)
     /* Just free the list. The list objects are freed from the RB tree. */
     free(worksheet->comment_objs);
 
+    if (worksheet->header_image_objs) {
+        while (!STAILQ_EMPTY(worksheet->header_image_objs)) {
+            header_image_vml = STAILQ_FIRST(worksheet->header_image_objs);
+            STAILQ_REMOVE_HEAD(worksheet->header_image_objs, list_pointers);
+            _free_vml_object(header_image_vml);
+        }
+
+        free(worksheet->header_image_objs);
+    }
+
     if (worksheet->selections) {
         while (!STAILQ_EMPTY(worksheet->selections)) {
             selection = STAILQ_FIRST(worksheet->selections);
@@ -493,6 +565,13 @@ lxw_worksheet_free(lxw_worksheet *worksheet)
     }
     free(worksheet->drawing_links);
 
+    while (!STAILQ_EMPTY(worksheet->vml_drawing_links)) {
+        relationship = STAILQ_FIRST(worksheet->vml_drawing_links);
+        STAILQ_REMOVE_HEAD(worksheet->vml_drawing_links, list_pointers);
+        _free_relationship(relationship);
+    }
+    free(worksheet->vml_drawing_links);
+
     if (worksheet->drawing_rel_ids) {
         for (drawing_rel_id =
              RB_MIN(lxw_drawing_rel_ids, worksheet->drawing_rel_ids);
@@ -510,8 +589,51 @@ lxw_worksheet_free(lxw_worksheet *worksheet)
         free(worksheet->drawing_rel_ids);
     }
 
+    if (worksheet->vml_drawing_rel_ids) {
+        for (drawing_rel_id =
+             RB_MIN(lxw_vml_drawing_rel_ids, worksheet->vml_drawing_rel_ids);
+             drawing_rel_id; drawing_rel_id = next_drawing_rel_id) {
+
+            next_drawing_rel_id =
+                RB_NEXT(lxw_vml_drawing_rel_ids, worksheet->drawing_rel_id,
+                        drawing_rel_id);
+            RB_REMOVE(lxw_vml_drawing_rel_ids, worksheet->vml_drawing_rel_ids,
+                      drawing_rel_id);
+            free(drawing_rel_id->target);
+            free(drawing_rel_id);
+        }
+
+        free(worksheet->vml_drawing_rel_ids);
+    }
+
+    if (worksheet->conditional_formats) {
+        for (cond_format_elem =
+             RB_MIN(lxw_cond_format_hash, worksheet->conditional_formats);
+             cond_format_elem; cond_format_elem = next_cond_format_elem) {
+
+            next_cond_format_elem = RB_NEXT(lxw_cond_format_hash,
+                                            worksheet->conditional_formats,
+                                            cond_format_elem);
+            RB_REMOVE(lxw_cond_format_hash,
+                      worksheet->conditional_formats, cond_format_elem);
+
+            while (!STAILQ_EMPTY(cond_format_elem->cond_formats)) {
+                cond_format = STAILQ_FIRST(cond_format_elem->cond_formats);
+                STAILQ_REMOVE_HEAD(cond_format_elem->cond_formats,
+                                   list_pointers);
+                _free_cond_format(cond_format);
+            }
+
+            free(cond_format_elem->cond_formats);
+            free(cond_format_elem);
+        }
+
+        free(worksheet->conditional_formats);
+    }
+
     _free_relationship(worksheet->external_vml_comment_link);
     _free_relationship(worksheet->external_comment_link);
+    _free_relationship(worksheet->external_vml_header_link);
 
     if (worksheet->array) {
         for (col = 0; col < LXW_COL_MAX; col++) {
@@ -532,7 +654,17 @@ lxw_worksheet_free(lxw_worksheet *worksheet)
     free(worksheet->quoted_name);
     free(worksheet->vba_codename);
     free(worksheet->vml_data_id_str);
+    free(worksheet->vml_header_id_str);
     free(worksheet->comment_author);
+    free(worksheet->ignore_number_stored_as_text);
+    free(worksheet->ignore_eval_error);
+    free(worksheet->ignore_formula_differs);
+    free(worksheet->ignore_formula_range);
+    free(worksheet->ignore_formula_unlocked);
+    free(worksheet->ignore_empty_cell_reference);
+    free(worksheet->ignore_list_data_validation);
+    free(worksheet->ignore_calculated_column);
+    free(worksheet->ignore_two_digit_text_year);
 
     free(worksheet);
     worksheet = NULL;
@@ -1016,6 +1148,16 @@ _drawing_rel_id_cmp(lxw_drawing_rel_id *rel_id1, lxw_drawing_rel_id *rel_id2)
 }
 
 /*
+ * Comparator for the conditional format RB hash elements.
+ */
+STATIC int
+_cond_format_hash_cmp(lxw_cond_format_hash_element *elem_1,
+                      lxw_cond_format_hash_element *elem_2)
+{
+    return strcmp(elem_1->sqref, elem_2->sqref);
+}
+
+/*
  * Get the index used to address a drawing rel link.
  */
 STATIC uint32_t
@@ -1069,6 +1211,68 @@ _find_drawing_rel_index(lxw_worksheet *self, char *target)
     tmp_drawing_rel_id.target = target;
     found_duplicate_target = RB_FIND(lxw_drawing_rel_ids,
                                      self->drawing_rel_ids,
+                                     &tmp_drawing_rel_id);
+
+    if (found_duplicate_target)
+        return found_duplicate_target->id;
+    else
+        return 0;
+}
+
+/*
+ * Get the index used to address a VMLdrawing rel link.
+ */
+STATIC uint32_t
+_get_vml_drawing_rel_index(lxw_worksheet *self, char *target)
+{
+    lxw_drawing_rel_id tmp_drawing_rel_id;
+    lxw_drawing_rel_id *found_duplicate_target = NULL;
+    lxw_drawing_rel_id *new_drawing_rel_id = NULL;
+
+    if (target) {
+        tmp_drawing_rel_id.target = target;
+        found_duplicate_target = RB_FIND(lxw_vml_drawing_rel_ids,
+                                         self->vml_drawing_rel_ids,
+                                         &tmp_drawing_rel_id);
+    }
+
+    if (found_duplicate_target) {
+        return found_duplicate_target->id;
+    }
+    else {
+        self->vml_drawing_rel_id++;
+
+        if (target) {
+            new_drawing_rel_id = calloc(1, sizeof(lxw_drawing_rel_id));
+
+            if (new_drawing_rel_id) {
+                new_drawing_rel_id->id = self->vml_drawing_rel_id;
+                new_drawing_rel_id->target = lxw_strdup(target);
+
+                RB_INSERT(lxw_vml_drawing_rel_ids, self->vml_drawing_rel_ids,
+                          new_drawing_rel_id);
+            }
+        }
+
+        return self->vml_drawing_rel_id;
+    }
+}
+
+/*
+ * find the index used to address a VML drawing rel link.
+ */
+STATIC uint32_t
+_find_vml_drawing_rel_index(lxw_worksheet *self, char *target)
+{
+    lxw_drawing_rel_id tmp_drawing_rel_id;
+    lxw_drawing_rel_id *found_duplicate_target = NULL;
+
+    if (!target)
+        return 0;
+
+    tmp_drawing_rel_id.target = target;
+    found_duplicate_target = RB_FIND(lxw_vml_drawing_rel_ids,
+                                     self->vml_drawing_rel_ids,
                                      &tmp_drawing_rel_id);
 
     if (found_duplicate_target)
@@ -1185,10 +1389,20 @@ _worksheet_write_worksheet(lxw_worksheet *self)
         "spreadsheetml/2006/main";
     char xmlns_r[] = "http://schemas.openxmlformats.org/"
         "officeDocument/2006/relationships";
+    char xmlns_mc[] = "http://schemas.openxmlformats.org/"
+        "markup-compatibility/2006";
+    char xmlns_x14ac[] = "http://schemas.microsoft.com/"
+        "office/spreadsheetml/2009/9/ac";
 
     LXW_INIT_ATTRIBUTES();
     LXW_PUSH_ATTRIBUTES_STR("xmlns", xmlns);
     LXW_PUSH_ATTRIBUTES_STR("xmlns:r", xmlns_r);
+
+    if (self->excel_version == 2010) {
+        LXW_PUSH_ATTRIBUTES_STR("xmlns:mc", xmlns_mc);
+        LXW_PUSH_ATTRIBUTES_STR("xmlns:x14ac", xmlns_x14ac);
+        LXW_PUSH_ATTRIBUTES_STR("mc:Ignorable", "x14ac");
+    }
 
     lxw_xml_start_tag(self->file, "worksheet", &attributes);
     LXW_FREE_ATTRIBUTES();
@@ -1677,6 +1891,9 @@ _worksheet_write_sheet_format_pr(lxw_worksheet *self)
     if (self->outline_col_level)
         LXW_PUSH_ATTRIBUTES_INT("outlineLevelCol", self->outline_col_level);
 
+    if (self->excel_version == 2010)
+        LXW_PUSH_ATTRIBUTES_STR("x14ac:dyDescent", "0.25");
+
     lxw_xml_empty_tag(self->file, "sheetFormatPr", &attributes);
 
     LXW_FREE_ATTRIBUTES();
@@ -1920,6 +2137,9 @@ _write_row(lxw_worksheet *self, lxw_row *row, char *spans)
     if (row->collapsed)
         LXW_PUSH_ATTRIBUTES_STR("collapsed", "1");
 
+    if (self->excel_version == 2010)
+        LXW_PUSH_ATTRIBUTES_STR("x14ac:dyDescent", "0.25");
+
     if (!row->data_changed)
         lxw_xml_empty_tag(self->file, "row", &attributes);
     else
@@ -1991,14 +2211,15 @@ _worksheet_size_row(lxw_worksheet *self, lxw_row_t row_num, uint8_t anchor)
 
     row = lxw_worksheet_find_row(self, row_num);
 
+    /* Note, the 0.75 below is due to the difference between 72/96 DPI. */
     if (row) {
         if (row->hidden && anchor != LXW_OBJECT_MOVE_AND_SIZE_AFTER)
             pixels = 0;
         else
-            pixels = (uint32_t) (4.0 / 3.0 * row->height);
+            pixels = (uint32_t) (row->height / 0.75);
     }
     else {
-        pixels = (uint32_t) (4.0 / 3.0 * self->default_row_height);
+        pixels = (uint32_t) (self->default_row_height / 0.75);
     }
 
     return pixels;
@@ -2511,6 +2732,73 @@ mem_error:
 }
 
 /*
+ * Set up image/drawings for header/footer images.
+ */
+void
+lxw_worksheet_prepare_header_image(lxw_worksheet *self,
+                                   uint32_t image_ref_id,
+                                   lxw_object_properties *object_props)
+{
+    lxw_rel_tuple *relationship = NULL;
+    char filename[LXW_FILENAME_LENGTH];
+    lxw_vml_obj *header_image_vml;
+    char *extension;
+
+    STAILQ_INSERT_TAIL(self->image_props, object_props, list_pointers);
+
+    if (!_find_vml_drawing_rel_index(self, object_props->md5)) {
+        relationship = calloc(1, sizeof(lxw_rel_tuple));
+        RETURN_VOID_ON_MEM_ERROR(relationship);
+
+        relationship->type = lxw_strdup("/image");
+        GOTO_LABEL_ON_MEM_ERROR(relationship->type, mem_error);
+
+        lxw_snprintf(filename, 32, "../media/image%d.%s", image_ref_id,
+                     object_props->extension);
+
+        relationship->target = lxw_strdup(filename);
+        GOTO_LABEL_ON_MEM_ERROR(relationship->target, mem_error);
+
+        STAILQ_INSERT_TAIL(self->vml_drawing_links, relationship,
+                           list_pointers);
+    }
+
+    header_image_vml = calloc(1, sizeof(lxw_vml_obj));
+    GOTO_LABEL_ON_MEM_ERROR(header_image_vml, mem_error);
+
+    header_image_vml->width = object_props->width;
+    header_image_vml->height = object_props->height;
+    header_image_vml->x_dpi = object_props->x_dpi;
+    header_image_vml->y_dpi = object_props->y_dpi;
+    header_image_vml->rel_index = 1;
+
+    header_image_vml->image_position =
+        lxw_strdup(object_props->image_position);
+    header_image_vml->name = lxw_strdup(object_props->description);
+
+    /* Strip the extension from the filename. */
+    extension = strchr(header_image_vml->name, '.');
+    if (extension)
+        *extension = '\0';
+
+    header_image_vml->rel_index =
+        _get_vml_drawing_rel_index(self, object_props->md5);
+
+    STAILQ_INSERT_TAIL(self->header_image_objs, header_image_vml,
+                       list_pointers);
+
+    return;
+
+mem_error:
+    if (relationship) {
+        free(relationship->type);
+        free(relationship->target);
+        free(relationship->target_mode);
+        free(relationship);
+    }
+}
+
+/*
  * Set up chart/drawings.
  */
 void
@@ -2722,6 +3010,57 @@ mem_error:
 }
 
 /*
+ * Set up external linkage for VML header/footer images.
+ */
+void
+lxw_worksheet_prepare_header_vml_objects(lxw_worksheet *self,
+                                         uint32_t vml_header_id,
+                                         uint32_t vml_drawing_id)
+{
+
+    lxw_rel_tuple *relationship;
+    char filename[LXW_FILENAME_LENGTH];
+    char *vml_data_id_str;
+
+    self->vml_header_id = vml_header_id;
+
+    /* Set up the VML relationship for header images. */
+    relationship = calloc(1, sizeof(lxw_rel_tuple));
+    GOTO_LABEL_ON_MEM_ERROR(relationship, mem_error);
+
+    relationship->type = lxw_strdup("/vmlDrawing");
+    GOTO_LABEL_ON_MEM_ERROR(relationship->type, mem_error);
+
+    lxw_snprintf(filename, 32, "../drawings/vmlDrawing%d.vml",
+                 vml_drawing_id);
+
+    relationship->target = lxw_strdup(filename);
+    GOTO_LABEL_ON_MEM_ERROR(relationship->target, mem_error);
+
+    self->external_vml_header_link = relationship;
+
+    /* If this allocation fails it will be dealt with in packager.c. */
+    vml_data_id_str = calloc(1, sizeof("4294967295"));
+    GOTO_LABEL_ON_MEM_ERROR(vml_data_id_str, mem_error);
+
+    lxw_snprintf(vml_data_id_str, sizeof("4294967295"), "%d", vml_header_id);
+
+    self->vml_header_id_str = vml_data_id_str;
+
+    return;
+
+mem_error:
+    if (relationship) {
+        free(relationship->type);
+        free(relationship->target);
+        free(relationship->target_mode);
+        free(relationship);
+    }
+
+    return;
+}
+
+/*
  * Extract width and height information from a PNG file.
  */
 STATIC lxw_error
@@ -2817,13 +3156,13 @@ _process_png(lxw_object_properties *object_props)
     object_props->width = width;
     object_props->height = height;
     object_props->x_dpi = x_dpi ? x_dpi : 96;
-    object_props->y_dpi = y_dpi ? x_dpi : 96;
+    object_props->y_dpi = y_dpi ? y_dpi : 96;
     object_props->extension = lxw_strdup("png");
 
     return LXW_NO_ERROR;
 
 file_error:
-    LXW_WARN_FORMAT1("worksheet_insert_image()/_opt(): "
+    LXW_WARN_FORMAT1("worksheet image insertion: "
                      "no size data found in: %s.", object_props->filename);
 
     return LXW_ERROR_IMAGE_DIMENSIONS;
@@ -2943,13 +3282,13 @@ _process_jpeg(lxw_object_properties *image_props)
     image_props->width = width;
     image_props->height = height;
     image_props->x_dpi = x_dpi ? x_dpi : 96;
-    image_props->y_dpi = y_dpi ? x_dpi : 96;
+    image_props->y_dpi = y_dpi ? y_dpi : 96;
     image_props->extension = lxw_strdup("jpeg");
 
     return LXW_NO_ERROR;
 
 file_error:
-    LXW_WARN_FORMAT1("worksheet_insert_image()/_opt(): "
+    LXW_WARN_FORMAT1("worksheet image insertion: "
                      "no size data found in: %s.", image_props->filename);
 
     return LXW_ERROR_IMAGE_DIMENSIONS;
@@ -2998,7 +3337,7 @@ _process_bmp(lxw_object_properties *image_props)
     return LXW_NO_ERROR;
 
 file_error:
-    LXW_WARN_FORMAT1("worksheet_insert_image()/_opt(): "
+    LXW_WARN_FORMAT1("worksheet image insertion: "
                      "no size data found in: %s.", image_props->filename);
 
     return LXW_ERROR_IMAGE_DIMENSIONS;
@@ -3022,7 +3361,7 @@ _get_image_properties(lxw_object_properties *image_props)
 
     /* Read 4 bytes to look for the file header/signature. */
     if (fread(signature, 1, 4, image_props->stream) < 4) {
-        LXW_WARN_FORMAT1("worksheet_insert_image()/_opt(): "
+        LXW_WARN_FORMAT1("worksheet image insertion: "
                          "couldn't read image type for: %s.",
                          image_props->filename);
         return LXW_ERROR_IMAGE_DIMENSIONS;
@@ -3041,7 +3380,7 @@ _get_image_properties(lxw_object_properties *image_props)
             return LXW_ERROR_IMAGE_DIMENSIONS;
     }
     else {
-        LXW_WARN_FORMAT1("worksheet_insert_image()/_opt(): "
+        LXW_WARN_FORMAT1("worksheet image insertion: "
                          "unsupported image format for: %s.",
                          image_props->filename);
         return LXW_ERROR_IMAGE_DIMENSIONS;
@@ -3076,6 +3415,61 @@ _get_image_properties(lxw_object_properties *image_props)
 #endif
 
     return LXW_NO_ERROR;
+}
+
+/* Conditional formats that refer to the same cell sqref range, like A or
+ * B1:B9, need to be written as part of one xml structure. Therefore we need
+ * to store them in a RB hash/tree keyed by sqref. Within the RB hash element
+ * we then store conditional formats that refer to sqref in a STAILQ list. */
+lxw_error
+_store_conditional_format_object(lxw_worksheet *self,
+                                 lxw_cond_format_obj *cond_format)
+{
+    lxw_cond_format_hash_element tmp_hash_element;
+    lxw_cond_format_hash_element *found_hash_element = NULL;
+    lxw_cond_format_hash_element *new_hash_element = NULL;
+
+    /* Create a temp hash element to do the lookup. */
+    LXW_ATTRIBUTE_COPY(tmp_hash_element.sqref, cond_format->sqref);
+    found_hash_element = RB_FIND(lxw_cond_format_hash,
+                                 self->conditional_formats,
+                                 &tmp_hash_element);
+
+    if (found_hash_element) {
+        /* If the RB element exists then add the conditional format to the
+         * list for the sqref range.*/
+        STAILQ_INSERT_TAIL(found_hash_element->cond_formats, cond_format,
+                           list_pointers);
+    }
+    else {
+        /* Create a new RB hash element. */
+        new_hash_element = calloc(1, sizeof(lxw_cond_format_hash_element));
+        GOTO_LABEL_ON_MEM_ERROR(new_hash_element, mem_error);
+
+        /* Use the sqref as the key. */
+        LXW_ATTRIBUTE_COPY(new_hash_element->sqref, cond_format->sqref);
+
+        /* Also create the list where we store the cond format objects. */
+        new_hash_element->cond_formats =
+            calloc(1, sizeof(struct lxw_cond_format_list));
+        GOTO_LABEL_ON_MEM_ERROR(new_hash_element->cond_formats, mem_error);
+
+        /* Initialize the list and add the conditional format object. */
+        STAILQ_INIT(new_hash_element->cond_formats);
+        STAILQ_INSERT_TAIL(new_hash_element->cond_formats, cond_format,
+                           list_pointers);
+
+        /* Now insert the RB hash element into the tree. */
+        RB_INSERT(lxw_cond_format_hash, self->conditional_formats,
+                  new_hash_element);
+
+    }
+
+    return LXW_NO_ERROR;
+
+mem_error:
+    free(new_hash_element);
+    return LXW_ERROR_MEMORY_MALLOC_FAILED;
 }
 
 /*****************************************************************************
@@ -3222,6 +3616,16 @@ _write_formula_num_cell(lxw_worksheet *self, lxw_cell *cell)
 }
 
 /*
+ * Write out a formula worksheet cell with a numeric result.
+ */
+STATIC void
+_write_formula_str_cell(lxw_worksheet *self, lxw_cell *cell)
+{
+    lxw_xml_data_element(self->file, "f", cell->u.string, NULL);
+    lxw_xml_data_element(self->file, "v", cell->user_data2, NULL);
+}
+
+/*
  * Write out an array formula worksheet cell with a numeric result.
  */
 STATIC void
@@ -3357,8 +3761,17 @@ _write_cell(lxw_worksheet *self, lxw_cell *cell, lxw_format *row_format)
         LXW_PUSH_ATTRIBUTES_INT("s", style_index);
 
     if (cell->type == FORMULA_CELL) {
+        /* If user_data2 is set then the formula has a string result. */
+        if (cell->user_data2)
+            LXW_PUSH_ATTRIBUTES_STR("t", "str");
+
         lxw_xml_start_tag(self->file, "c", &attributes);
-        _write_formula_num_cell(self, cell);
+
+        if (cell->user_data2)
+            _write_formula_str_cell(self, cell);
+        else
+            _write_formula_num_cell(self, cell);
+
         lxw_xml_end_tag(self->file, "c");
     }
     else if (cell->type == BLANK_CELL) {
@@ -3464,6 +3877,68 @@ lxw_worksheet_write_single_row(lxw_worksheet *self)
     row->collapsed = LXW_FALSE;
     row->data_changed = LXW_FALSE;
     row->row_changed = LXW_FALSE;
+}
+
+/* Process a header/footer image and store it in the correct slot. */
+lxw_error
+_worksheet_set_header_footer_image(lxw_worksheet *self, char *filename,
+                                   uint8_t image_position)
+{
+    FILE *image_stream;
+    char *description;
+    lxw_object_properties *object_props;
+    char *image_strings[] = { "LH", "CH", "RH", "LF", "CF", "RF" };
+
+    /* Not all slots will have image files. */
+    if (!filename)
+        return LXW_NO_ERROR;
+
+    /* Check that the image file exists and can be opened. */
+    image_stream = lxw_fopen(filename, "rb");
+    if (!image_stream) {
+        LXW_WARN_FORMAT1("worksheet_set_header_opt/footer_opt(): "
+                         "file doesn't exist or can't be opened: %s.",
+                         filename);
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+
+    /* Use the filename as the default description, like Excel. */
+    description = lxw_basename(filename);
+    if (!description) {
+        LXW_WARN_FORMAT1("worksheet_set_header_opt/footer_opt(): "
+                         "couldn't get basename for file: %s.", filename);
+        fclose(image_stream);
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+
+    /* Create a new object to hold the image properties. */
+    object_props = calloc(1, sizeof(lxw_object_properties));
+    if (!object_props) {
+        fclose(image_stream);
+        return LXW_ERROR_MEMORY_MALLOC_FAILED;
+    }
+
+    /* Copy other options or set defaults. */
+    object_props->filename = lxw_strdup(filename);
+    object_props->description = lxw_strdup(description);
+    object_props->stream = image_stream;
+
+    /* Set VML image position string based on the header/footer/position. */
+    object_props->image_position = lxw_strdup(image_strings[image_position]);
+
+    if (_get_image_properties(object_props) == LXW_NO_ERROR) {
+        *self->header_footer_objs[image_position] = object_props;
+        self->has_header_vml = LXW_TRUE;
+        fclose(image_stream);
+        return LXW_NO_ERROR;
+    }
+    else {
+        _free_object_properties(object_props);
+        fclose(image_stream);
+        return LXW_ERROR_IMAGE_DIMENSIONS;
+    }
+
+    return LXW_NO_ERROR;
 }
 
 /*
@@ -4102,6 +4577,31 @@ _worksheet_write_legacy_drawing(lxw_worksheet *self)
 }
 
 /*
+ * Write the <legacyDrawingHF> element.
+ */
+STATIC void
+_worksheet_write_legacy_drawing_hf(lxw_worksheet *self)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    char r_id[LXW_MAX_ATTRIBUTE_LENGTH];
+
+    if (!self->has_header_vml)
+        return;
+    else
+        self->rel_count++;
+
+    lxw_snprintf(r_id, LXW_ATTR_32, "rId%d", self->rel_count);
+    LXW_INIT_ATTRIBUTES();
+    LXW_PUSH_ATTRIBUTES_STR("r:id", r_id);
+
+    lxw_xml_empty_tag(self->file, "legacyDrawingHF", &attributes);
+
+    LXW_FREE_ATTRIBUTES();
+
+}
+
+/*
  * Write the <drawing> element.
  */
 STATIC void
@@ -4354,6 +4854,1616 @@ _worksheet_write_data_validations(lxw_worksheet *self)
 }
 
 /*
+ * Write the <formula> element for strings.
+ */
+STATIC void
+_worksheet_write_formula_str(lxw_worksheet *self, char *data)
+{
+    lxw_xml_data_element(self->file, "formula", data, NULL);
+}
+
+/*
+ * Write the <formula> element for numbers.
+ */
+STATIC void
+_worksheet_write_formula_num(lxw_worksheet *self, double num)
+{
+    char data[LXW_ATTR_32];
+
+    lxw_sprintf_dbl(data, num);
+    lxw_xml_data_element(self->file, "formula", data, NULL);
+}
+
+/*
+ * Write the <ext> element.
+ */
+STATIC void
+_worksheet_write_ext(lxw_worksheet *self, char *uri)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    char xmlns_x_14[] =
+        "http://schemas.microsoft.com/office/spreadsheetml/2009/9/main";
+
+    LXW_INIT_ATTRIBUTES();
+    LXW_PUSH_ATTRIBUTES_STR("xmlns:x14", xmlns_x_14);
+    LXW_PUSH_ATTRIBUTES_STR("uri", uri);
+
+    lxw_xml_start_tag(self->file, "ext", &attributes);
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <extLst> dataBar extension element.
+ */
+STATIC void
+_worksheet_write_data_bar_ext(lxw_worksheet *self,
+                              lxw_cond_format_obj *cond_format)
+{
+    /* Create a pseudo GUID for each unique Excel 2010 data bar. */
+    cond_format->guid = calloc(1, LXW_GUID_LENGTH);
+    lxw_snprintf(cond_format->guid, LXW_GUID_LENGTH,
+                 "{DA7ABA51-AAAA-BBBB-%04X-%012X}",
+                 self->index + 1, ++self->data_bar_2010_index);
+
+    lxw_xml_start_tag(self->file, "extLst", NULL);
+
+    _worksheet_write_ext(self, "{B025F937-C7B1-47D3-B67F-A62EFF666E3E}");
+
+    lxw_xml_data_element(self->file, "x14:id", cond_format->guid, NULL);
+
+    lxw_xml_end_tag(self->file, "ext");
+    lxw_xml_end_tag(self->file, "extLst");
+}
+
+/*
+ * Write the <color> element.
+ */
+STATIC void
+_worksheet_write_color(lxw_worksheet *self, lxw_color_t color)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    char rgb[LXW_ATTR_32];
+
+    lxw_snprintf(rgb, LXW_ATTR_32, "FF%06X", color & LXW_COLOR_MASK);
+
+    LXW_INIT_ATTRIBUTES();
+    LXW_PUSH_ATTRIBUTES_STR("rgb", rgb);
+
+    lxw_xml_empty_tag(self->file, "color", &attributes);
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfvo> element for strings.
+ */
+STATIC void
+_worksheet_write_cfvo_str(lxw_worksheet *self, uint8_t rule_type,
+                          char *value, uint8_t data_bar_2010)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+
+    LXW_INIT_ATTRIBUTES();
+
+    if (rule_type == LXW_CONDITIONAL_RULE_TYPE_MINIMUM)
+        LXW_PUSH_ATTRIBUTES_STR("type", "min");
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_NUMBER)
+        LXW_PUSH_ATTRIBUTES_STR("type", "num");
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_PERCENT)
+        LXW_PUSH_ATTRIBUTES_STR("type", "percent");
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_PERCENTILE)
+        LXW_PUSH_ATTRIBUTES_STR("type", "percentile");
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_FORMULA)
+        LXW_PUSH_ATTRIBUTES_STR("type", "formula");
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_MAXIMUM)
+        LXW_PUSH_ATTRIBUTES_STR("type", "max");
+
+    if (!data_bar_2010 || (rule_type != LXW_CONDITIONAL_RULE_TYPE_MINIMUM
+                           && rule_type != LXW_CONDITIONAL_RULE_TYPE_MAXIMUM))
+        LXW_PUSH_ATTRIBUTES_STR("val", value);
+
+    lxw_xml_empty_tag(self->file, "cfvo", &attributes);
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfvo> element for numbers.
+ */
+STATIC void
+_worksheet_write_cfvo_num(lxw_worksheet *self, uint8_t rule_type,
+                          double value, uint8_t data_bar_2010)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+
+    LXW_INIT_ATTRIBUTES();
+
+    if (rule_type == LXW_CONDITIONAL_RULE_TYPE_MINIMUM)
+        LXW_PUSH_ATTRIBUTES_STR("type", "min");
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_NUMBER)
+        LXW_PUSH_ATTRIBUTES_STR("type", "num");
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_PERCENT)
+        LXW_PUSH_ATTRIBUTES_STR("type", "percent");
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_PERCENTILE)
+        LXW_PUSH_ATTRIBUTES_STR("type", "percentile");
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_FORMULA)
+        LXW_PUSH_ATTRIBUTES_STR("type", "formula");
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_MAXIMUM)
+        LXW_PUSH_ATTRIBUTES_STR("type", "max");
+
+    if (!data_bar_2010 || (rule_type != LXW_CONDITIONAL_RULE_TYPE_MINIMUM
+                           && rule_type != LXW_CONDITIONAL_RULE_TYPE_MAXIMUM))
+        LXW_PUSH_ATTRIBUTES_DBL("val", value);
+
+    lxw_xml_empty_tag(self->file, "cfvo", &attributes);
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <iconSet> element.
+ */
+STATIC void
+_worksheet_write_icon_set(lxw_worksheet *self,
+                          lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    char *icon_set[] = {
+        "3Arrows",
+        "3ArrowsGray",
+        "3Flags",
+        "3TrafficLights",
+        "3TrafficLights2",
+        "3Signs",
+        "3Symbols",
+        "3Symbols2",
+        "4Arrows",
+        "4ArrowsGray",
+        "4RedToBlack",
+        "4Rating",
+        "4TrafficLights",
+        "5Arrows",
+        "5ArrowsGray",
+        "5Rating",
+        "5Quarters",
+    };
+    uint8_t percent = LXW_CONDITIONAL_RULE_TYPE_PERCENT;
+    uint8_t style = cond_format->icon_style;
+
+    LXW_INIT_ATTRIBUTES();
+
+    if (style != LXW_CONDITIONAL_ICONS_3_TRAFFIC_LIGHTS_UNRIMMED)
+        LXW_PUSH_ATTRIBUTES_STR("iconSet", icon_set[style]);
+
+    if (cond_format->reverse_icons == LXW_TRUE)
+        LXW_PUSH_ATTRIBUTES_STR("reverse", "1");
+
+    if (cond_format->icons_only == LXW_TRUE)
+        LXW_PUSH_ATTRIBUTES_STR("showValue", "0");
+
+    lxw_xml_start_tag(self->file, "iconSet", &attributes);
+
+    if (style < LXW_CONDITIONAL_ICONS_4_ARROWS_COLORED) {
+        _worksheet_write_cfvo_num(self, percent, 0, LXW_FALSE);
+        _worksheet_write_cfvo_num(self, percent, 33, LXW_FALSE);
+        _worksheet_write_cfvo_num(self, percent, 67, LXW_FALSE);
+    }
+
+    if (style >= LXW_CONDITIONAL_ICONS_4_ARROWS_COLORED
+        && style < LXW_CONDITIONAL_ICONS_5_ARROWS_COLORED) {
+        _worksheet_write_cfvo_num(self, percent, 0, LXW_FALSE);
+        _worksheet_write_cfvo_num(self, percent, 25, LXW_FALSE);
+        _worksheet_write_cfvo_num(self, percent, 50, LXW_FALSE);
+        _worksheet_write_cfvo_num(self, percent, 75, LXW_FALSE);
+    }
+
+    if (style >= LXW_CONDITIONAL_ICONS_5_ARROWS_COLORED
+        && style <= LXW_CONDITIONAL_ICONS_5_QUARTERS) {
+        _worksheet_write_cfvo_num(self, percent, 0, LXW_FALSE);
+        _worksheet_write_cfvo_num(self, percent, 20, LXW_FALSE);
+        _worksheet_write_cfvo_num(self, percent, 40, LXW_FALSE);
+        _worksheet_write_cfvo_num(self, percent, 60, LXW_FALSE);
+        _worksheet_write_cfvo_num(self, percent, 80, LXW_FALSE);
+    }
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfRule> element for data bar rules.
+ */
+STATIC void
+_worksheet_write_cf_rule_icons(lxw_worksheet *self,
+                               lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+
+    LXW_INIT_ATTRIBUTES();
+
+    LXW_PUSH_ATTRIBUTES_STR("type", cond_format->type_string);
+    LXW_PUSH_ATTRIBUTES_INT("priority", cond_format->dxf_priority);
+    lxw_xml_start_tag(self->file, "cfRule", &attributes);
+
+    _worksheet_write_icon_set(self, cond_format);
+
+    lxw_xml_end_tag(self->file, "iconSet");
+    lxw_xml_end_tag(self->file, "cfRule");
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <dataBar> element.
+ */
+STATIC void
+_worksheet_write_data_bar(lxw_worksheet *self,
+                          lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+
+    LXW_INIT_ATTRIBUTES();
+
+    if (cond_format->bar_only)
+        LXW_PUSH_ATTRIBUTES_STR("showValue", "0");
+
+    lxw_xml_start_tag(self->file, "dataBar", &attributes);
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfRule> element for data bar rules.
+ */
+STATIC void
+_worksheet_write_cf_rule_data_bar(lxw_worksheet *self,
+                                  lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+
+    LXW_INIT_ATTRIBUTES();
+
+    LXW_PUSH_ATTRIBUTES_STR("type", cond_format->type_string);
+    LXW_PUSH_ATTRIBUTES_INT("priority", cond_format->dxf_priority);
+    lxw_xml_start_tag(self->file, "cfRule", &attributes);
+
+    _worksheet_write_data_bar(self, cond_format);
+
+    if (cond_format->min_value_string) {
+        _worksheet_write_cfvo_str(self, cond_format->min_rule_type,
+                                  cond_format->min_value_string,
+                                  cond_format->data_bar_2010);
+    }
+    else {
+        _worksheet_write_cfvo_num(self, cond_format->min_rule_type,
+                                  cond_format->min_value,
+                                  cond_format->data_bar_2010);
+    }
+
+    if (cond_format->max_value_string) {
+        _worksheet_write_cfvo_str(self, cond_format->max_rule_type,
+                                  cond_format->max_value_string,
+                                  cond_format->data_bar_2010);
+    }
+    else {
+        _worksheet_write_cfvo_num(self, cond_format->max_rule_type,
+                                  cond_format->max_value,
+                                  cond_format->data_bar_2010);
+    }
+
+    _worksheet_write_color(self, cond_format->bar_color);
+
+    lxw_xml_end_tag(self->file, "dataBar");
+
+    if (cond_format->data_bar_2010)
+        _worksheet_write_data_bar_ext(self, cond_format);
+
+    lxw_xml_end_tag(self->file, "cfRule");
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfRule> element for 2 and 3 color scale rules.
+ */
+STATIC void
+_worksheet_write_cf_rule_color_scale(lxw_worksheet *self,
+                                     lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+
+    LXW_INIT_ATTRIBUTES();
+
+    LXW_PUSH_ATTRIBUTES_STR("type", cond_format->type_string);
+    LXW_PUSH_ATTRIBUTES_INT("priority", cond_format->dxf_priority);
+    lxw_xml_start_tag(self->file, "cfRule", &attributes);
+
+    lxw_xml_start_tag(self->file, "colorScale", NULL);
+
+    if (cond_format->min_value_string) {
+        _worksheet_write_cfvo_str(self, cond_format->min_rule_type,
+                                  cond_format->min_value_string, LXW_FALSE);
+    }
+    else {
+        _worksheet_write_cfvo_num(self, cond_format->min_rule_type,
+                                  cond_format->min_value, LXW_FALSE);
+    }
+
+    if (cond_format->type == LXW_CONDITIONAL_3_COLOR_SCALE) {
+        if (cond_format->mid_value_string) {
+            _worksheet_write_cfvo_str(self, cond_format->mid_rule_type,
+                                      cond_format->mid_value_string,
+                                      LXW_FALSE);
+        }
+        else {
+            _worksheet_write_cfvo_num(self, cond_format->mid_rule_type,
+                                      cond_format->mid_value, LXW_FALSE);
+        }
+    }
+
+    if (cond_format->max_value_string) {
+        _worksheet_write_cfvo_str(self, cond_format->max_rule_type,
+                                  cond_format->max_value_string, LXW_FALSE);
+    }
+    else {
+        _worksheet_write_cfvo_num(self, cond_format->max_rule_type,
+                                  cond_format->max_value, LXW_FALSE);
+    }
+
+    _worksheet_write_color(self, cond_format->min_color);
+
+    if (cond_format->type == LXW_CONDITIONAL_3_COLOR_SCALE)
+        _worksheet_write_color(self, cond_format->mid_color);
+
+    _worksheet_write_color(self, cond_format->max_color);
+
+    lxw_xml_end_tag(self->file, "colorScale");
+    lxw_xml_end_tag(self->file, "cfRule");
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfRule> element for formula rules.
+ */
+STATIC void
+_worksheet_write_cf_rule_formula(lxw_worksheet *self,
+                                 lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+
+    LXW_INIT_ATTRIBUTES();
+
+    LXW_PUSH_ATTRIBUTES_STR("type", cond_format->type_string);
+
+    if (cond_format->dxf_index != LXW_PROPERTY_UNSET)
+        LXW_PUSH_ATTRIBUTES_INT("dxfId", cond_format->dxf_index);
+
+    LXW_PUSH_ATTRIBUTES_INT("priority", cond_format->dxf_priority);
+
+    if (cond_format->stop_if_true)
+        LXW_PUSH_ATTRIBUTES_INT("stopIfTrue", 1);
+
+    lxw_xml_start_tag(self->file, "cfRule", &attributes);
+
+    _worksheet_write_formula_str(self, cond_format->min_value_string);
+
+    lxw_xml_end_tag(self->file, "cfRule");
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfRule> element for top and bottom rules.
+ */
+STATIC void
+_worksheet_write_cf_rule_top(lxw_worksheet *self,
+                             lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+
+    LXW_INIT_ATTRIBUTES();
+
+    LXW_PUSH_ATTRIBUTES_STR("type", cond_format->type_string);
+
+    if (cond_format->dxf_index != LXW_PROPERTY_UNSET)
+        LXW_PUSH_ATTRIBUTES_INT("dxfId", cond_format->dxf_index);
+
+    LXW_PUSH_ATTRIBUTES_INT("priority", cond_format->dxf_priority);
+
+    if (cond_format->stop_if_true)
+        LXW_PUSH_ATTRIBUTES_INT("stopIfTrue", 1);
+
+    if (cond_format->criteria ==
+        LXW_CONDITIONAL_CRITERIA_TOP_OR_BOTTOM_PERCENT)
+        LXW_PUSH_ATTRIBUTES_INT("percent", 1);
+
+    if (cond_format->type == LXW_CONDITIONAL_TYPE_BOTTOM)
+        LXW_PUSH_ATTRIBUTES_INT("bottom", 1);
+
+    /* Rank must be an int in the range 1-1000 . */
+    if (cond_format->min_value < 1.0 || cond_format->min_value > 1.0)
+        LXW_PUSH_ATTRIBUTES_DBL("rank", 10);
+    else
+        LXW_PUSH_ATTRIBUTES_DBL("rank", (uint16_t) cond_format->min_value);
+
+    lxw_xml_empty_tag(self->file, "cfRule", &attributes);
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfRule> element for unique/duplicate rules.
+ */
+STATIC void
+_worksheet_write_cf_rule_duplicate(lxw_worksheet *self,
+                                   lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+
+    LXW_INIT_ATTRIBUTES();
+
+    LXW_PUSH_ATTRIBUTES_STR("type", cond_format->type_string);
+
+    /* Set the attributes common to all rule types. */
+    if (cond_format->dxf_index != LXW_PROPERTY_UNSET)
+        LXW_PUSH_ATTRIBUTES_INT("dxfId", cond_format->dxf_index);
+
+    LXW_PUSH_ATTRIBUTES_INT("priority", cond_format->dxf_priority);
+
+    lxw_xml_empty_tag(self->file, "cfRule", &attributes);
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfRule> element for averages rules.
+ */
+STATIC void
+_worksheet_write_cf_rule_average(lxw_worksheet *self,
+                                 lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    uint8_t criteria = cond_format->criteria;
+
+    LXW_INIT_ATTRIBUTES();
+
+    LXW_PUSH_ATTRIBUTES_STR("type", cond_format->type_string);
+
+    if (cond_format->dxf_index != LXW_PROPERTY_UNSET)
+        LXW_PUSH_ATTRIBUTES_INT("dxfId", cond_format->dxf_index);
+
+    LXW_PUSH_ATTRIBUTES_INT("priority", cond_format->dxf_priority);
+
+    if (cond_format->stop_if_true)
+        LXW_PUSH_ATTRIBUTES_INT("stopIfTrue", 1);
+
+    if (criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_BELOW
+        || criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_BELOW_OR_EQUAL
+        || criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_1_STD_DEV_BELOW
+        || criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_2_STD_DEV_BELOW
+        || criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_3_STD_DEV_BELOW)
+        LXW_PUSH_ATTRIBUTES_INT("aboveAverage", 0);
+
+    if (criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_ABOVE_OR_EQUAL
+        || criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_BELOW_OR_EQUAL)
+        LXW_PUSH_ATTRIBUTES_INT("equalAverage", 1);
+
+    if (criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_1_STD_DEV_ABOVE
+        || criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_1_STD_DEV_BELOW)
+        LXW_PUSH_ATTRIBUTES_INT("stdDev", 1);
+
+    if (criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_2_STD_DEV_ABOVE
+        || criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_2_STD_DEV_BELOW)
+        LXW_PUSH_ATTRIBUTES_INT("stdDev", 2);
+
+    if (criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_3_STD_DEV_ABOVE
+        || criteria == LXW_CONDITIONAL_CRITERIA_AVERAGE_3_STD_DEV_BELOW)
+        LXW_PUSH_ATTRIBUTES_INT("stdDev", 3);
+
+    lxw_xml_empty_tag(self->file, "cfRule", &attributes);
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfRule> element for time_period rules.
+ */
+STATIC void
+_worksheet_write_cf_rule_time_period(lxw_worksheet *self,
+                                     lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    char formula[LXW_MAX_ATTRIBUTE_LENGTH];
+    uint8_t pos;
+    uint8_t criteria = cond_format->criteria;
+    char *first_cell = cond_format->first_cell;
+    char *time_periods[] = {
+        "yesterday",
+        "today",
+        "tomorrow",
+        "last7Days",
+        "lastWeek",
+        "thisWeek",
+        "nextWeek",
+        "lastMonth",
+        "thisMonth",
+        "nextMonth",
+    };
+
+    LXW_INIT_ATTRIBUTES();
+
+    LXW_PUSH_ATTRIBUTES_STR("type", cond_format->type_string);
+
+    if (cond_format->dxf_index != LXW_PROPERTY_UNSET)
+        LXW_PUSH_ATTRIBUTES_INT("dxfId", cond_format->dxf_index);
+
+    LXW_PUSH_ATTRIBUTES_INT("priority", cond_format->dxf_priority);
+
+    pos = criteria - LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_YESTERDAY;
+    LXW_PUSH_ATTRIBUTES_STR("timePeriod", time_periods[pos]);
+
+    if (cond_format->stop_if_true)
+        LXW_PUSH_ATTRIBUTES_INT("stopIfTrue", 1);
+
+    lxw_xml_start_tag(self->file, "cfRule", &attributes);
+
+    if (criteria == LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_YESTERDAY) {
+        lxw_snprintf(formula, LXW_MAX_ATTRIBUTE_LENGTH,
+                     "FLOOR(%s,1)=TODAY()-1", first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_TODAY) {
+        lxw_snprintf(formula, LXW_MAX_ATTRIBUTE_LENGTH,
+                     "FLOOR(%s,1)=TODAY()", first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_TOMORROW) {
+        lxw_snprintf(formula, LXW_MAX_ATTRIBUTE_LENGTH,
+                     "FLOOR(%s,1)=TODAY()+1", first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_LAST_7_DAYS) {
+        lxw_snprintf(formula, LXW_MAX_ATTRIBUTE_LENGTH,
+                     "AND(TODAY()-FLOOR(%s,1)<=6,FLOOR(%s,1)<=TODAY())",
+                     first_cell, first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_LAST_WEEK) {
+        lxw_snprintf(formula, LXW_MAX_ATTRIBUTE_LENGTH,
+                     "AND(TODAY()-ROUNDDOWN(%s,0)>=(WEEKDAY(TODAY())),"
+                     "TODAY()-ROUNDDOWN(%s,0)<(WEEKDAY(TODAY())+7))",
+                     first_cell, first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_THIS_WEEK) {
+        lxw_snprintf(formula, LXW_MAX_ATTRIBUTE_LENGTH,
+                     "AND(TODAY()-ROUNDDOWN(%s,0)<=WEEKDAY(TODAY())-1,"
+                     "ROUNDDOWN(%s,0)-TODAY()<=7-WEEKDAY(TODAY()))",
+                     first_cell, first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_NEXT_WEEK) {
+        lxw_snprintf(formula, LXW_MAX_ATTRIBUTE_LENGTH,
+                     "AND(ROUNDDOWN(%s,0)-TODAY()>(7-WEEKDAY(TODAY())),"
+                     "ROUNDDOWN(%s,0)-TODAY()<(15-WEEKDAY(TODAY())))",
+                     first_cell, first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_LAST_MONTH) {
+        lxw_snprintf(formula, LXW_MAX_ATTRIBUTE_LENGTH,
+                     "AND(MONTH(%s)=MONTH(TODAY())-1,OR(YEAR(%s)=YEAR("
+                     "TODAY()),AND(MONTH(%s)=1,YEAR(A1)=YEAR(TODAY())-1)))",
+                     first_cell, first_cell, first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_THIS_MONTH) {
+        lxw_snprintf(formula, LXW_MAX_ATTRIBUTE_LENGTH,
+                     "AND(MONTH(%s)=MONTH(TODAY()),YEAR(%s)=YEAR(TODAY()))",
+                     first_cell, first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_NEXT_MONTH) {
+        lxw_snprintf(formula, LXW_MAX_ATTRIBUTE_LENGTH,
+                     "AND(MONTH(%s)=MONTH(TODAY())+1,OR(YEAR(%s)=YEAR("
+                     "TODAY()),AND(MONTH(%s)=12,YEAR(%s)=YEAR(TODAY())+1)))",
+                     first_cell, first_cell, first_cell, first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+
+    lxw_xml_end_tag(self->file, "cfRule");
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfRule> element for blanks/no_blanks, errors/no_errors rules.
+ */
+STATIC void
+_worksheet_write_cf_rule_blanks(lxw_worksheet *self,
+                                lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    char formula[LXW_ATTR_32];
+    uint8_t type = cond_format->type;
+
+    LXW_INIT_ATTRIBUTES();
+
+    LXW_PUSH_ATTRIBUTES_STR("type", cond_format->type_string);
+
+    if (cond_format->dxf_index != LXW_PROPERTY_UNSET)
+        LXW_PUSH_ATTRIBUTES_INT("dxfId", cond_format->dxf_index);
+
+    LXW_PUSH_ATTRIBUTES_INT("priority", cond_format->dxf_priority);
+
+    if (cond_format->stop_if_true)
+        LXW_PUSH_ATTRIBUTES_INT("stopIfTrue", 1);
+
+    lxw_xml_start_tag(self->file, "cfRule", &attributes);
+
+    if (type == LXW_CONDITIONAL_TYPE_BLANKS) {
+        lxw_snprintf(formula, LXW_ATTR_32, "LEN(TRIM(%s))=0",
+                     cond_format->first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (type == LXW_CONDITIONAL_TYPE_NO_BLANKS) {
+        lxw_snprintf(formula, LXW_ATTR_32, "LEN(TRIM(%s))>0",
+                     cond_format->first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (type == LXW_CONDITIONAL_TYPE_ERRORS) {
+        lxw_snprintf(formula, LXW_ATTR_32, "ISERROR(%s)",
+                     cond_format->first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (type == LXW_CONDITIONAL_TYPE_NO_ERRORS) {
+        lxw_snprintf(formula, LXW_ATTR_32, "NOT(ISERROR(%s))",
+                     cond_format->first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+
+    lxw_xml_end_tag(self->file, "cfRule");
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfRule> element for text rules.
+ */
+STATIC void
+_worksheet_write_cf_rule_text(lxw_worksheet *self,
+                              lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    uint8_t pos;
+    char formula[LXW_ATTR_32 * 2];
+    char *operators[] = {
+        "containsText",
+        "notContains",
+        "beginsWith",
+        "endsWith",
+    };
+    uint8_t criteria = cond_format->criteria;
+
+    LXW_INIT_ATTRIBUTES();
+
+    if (criteria == LXW_CONDITIONAL_CRITERIA_TEXT_CONTAINING)
+        LXW_PUSH_ATTRIBUTES_STR("type", "containsText");
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TEXT_NOT_CONTAINING)
+        LXW_PUSH_ATTRIBUTES_STR("type", "notContainsText");
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TEXT_BEGINS_WITH)
+        LXW_PUSH_ATTRIBUTES_STR("type", "beginsWith");
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TEXT_ENDS_WITH)
+        LXW_PUSH_ATTRIBUTES_STR("type", "endsWith");
+
+    if (cond_format->dxf_index != LXW_PROPERTY_UNSET)
+        LXW_PUSH_ATTRIBUTES_INT("dxfId", cond_format->dxf_index);
+
+    LXW_PUSH_ATTRIBUTES_INT("priority", cond_format->dxf_priority);
+
+    if (cond_format->stop_if_true)
+        LXW_PUSH_ATTRIBUTES_INT("stopIfTrue", 1);
+
+    pos = criteria - LXW_CONDITIONAL_CRITERIA_TEXT_CONTAINING;
+    LXW_PUSH_ATTRIBUTES_STR("operator", operators[pos]);
+
+    LXW_PUSH_ATTRIBUTES_STR("text", cond_format->min_value_string);
+
+    lxw_xml_start_tag(self->file, "cfRule", &attributes);
+
+    if (criteria == LXW_CONDITIONAL_CRITERIA_TEXT_CONTAINING) {
+        lxw_snprintf(formula, LXW_ATTR_32 * 2,
+                     "NOT(ISERROR(SEARCH(\"%s\",%s)))",
+                     cond_format->min_value_string, cond_format->first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TEXT_NOT_CONTAINING) {
+        lxw_snprintf(formula, LXW_ATTR_32 * 2,
+                     "ISERROR(SEARCH(\"%s\",%s))",
+                     cond_format->min_value_string, cond_format->first_cell);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TEXT_BEGINS_WITH) {
+        lxw_snprintf(formula, LXW_ATTR_32 * 2,
+                     "LEFT(%s,%d)=\"%s\"",
+                     cond_format->first_cell,
+                     (uint16_t) strlen(cond_format->min_value_string),
+                     cond_format->min_value_string);
+        _worksheet_write_formula_str(self, formula);
+    }
+    else if (criteria == LXW_CONDITIONAL_CRITERIA_TEXT_ENDS_WITH) {
+        lxw_snprintf(formula, LXW_ATTR_32 * 2,
+                     "RIGHT(%s,%d)=\"%s\"",
+                     cond_format->first_cell,
+                     (uint16_t) strlen(cond_format->min_value_string),
+                     cond_format->min_value_string);
+        _worksheet_write_formula_str(self, formula);
+    }
+
+    lxw_xml_end_tag(self->file, "cfRule");
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfRule> element for cell rules.
+ */
+STATIC void
+_worksheet_write_cf_rule_cell(lxw_worksheet *self,
+                              lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    char *operators[] = {
+        "none",
+        "equal",
+        "notEqual",
+        "greaterThan",
+        "lessThan",
+        "greaterThanOrEqual",
+        "lessThanOrEqual",
+        "between",
+        "notBetween",
+    };
+
+    LXW_INIT_ATTRIBUTES();
+
+    LXW_PUSH_ATTRIBUTES_STR("type", cond_format->type_string);
+
+    if (cond_format->dxf_index != LXW_PROPERTY_UNSET)
+        LXW_PUSH_ATTRIBUTES_INT("dxfId", cond_format->dxf_index);
+
+    LXW_PUSH_ATTRIBUTES_INT("priority", cond_format->dxf_priority);
+
+    if (cond_format->stop_if_true)
+        LXW_PUSH_ATTRIBUTES_INT("stopIfTrue", 1);
+
+    LXW_PUSH_ATTRIBUTES_STR("operator", operators[cond_format->criteria]);
+
+    lxw_xml_start_tag(self->file, "cfRule", &attributes);
+
+    if (cond_format->min_value_string)
+        _worksheet_write_formula_str(self, cond_format->min_value_string);
+    else
+        _worksheet_write_formula_num(self, cond_format->min_value);
+
+    if (cond_format->has_max) {
+        if (cond_format->max_value_string)
+            _worksheet_write_formula_str(self, cond_format->max_value_string);
+        else
+            _worksheet_write_formula_num(self, cond_format->max_value);
+    }
+
+    lxw_xml_end_tag(self->file, "cfRule");
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <cfRule> element.
+ */
+STATIC void
+_worksheet_write_cf_rule(lxw_worksheet *self,
+                         lxw_cond_format_obj *cond_format)
+{
+    if (cond_format->type == LXW_CONDITIONAL_TYPE_CELL) {
+
+        _worksheet_write_cf_rule_cell(self, cond_format);
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_TYPE_TEXT) {
+
+        _worksheet_write_cf_rule_text(self, cond_format);
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_TYPE_TIME_PERIOD) {
+
+        _worksheet_write_cf_rule_time_period(self, cond_format);
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_TYPE_DUPLICATE
+             || cond_format->type == LXW_CONDITIONAL_TYPE_UNIQUE) {
+
+        _worksheet_write_cf_rule_duplicate(self, cond_format);
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_TYPE_AVERAGE) {
+
+        _worksheet_write_cf_rule_average(self, cond_format);
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_TYPE_TOP
+             || cond_format->type == LXW_CONDITIONAL_TYPE_BOTTOM) {
+
+        _worksheet_write_cf_rule_top(self, cond_format);
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_TYPE_BLANKS
+             || cond_format->type == LXW_CONDITIONAL_TYPE_NO_BLANKS
+             || cond_format->type == LXW_CONDITIONAL_TYPE_ERRORS
+             || cond_format->type == LXW_CONDITIONAL_TYPE_NO_ERRORS) {
+
+        _worksheet_write_cf_rule_blanks(self, cond_format);
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_TYPE_FORMULA) {
+
+        _worksheet_write_cf_rule_formula(self, cond_format);
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_2_COLOR_SCALE
+             || cond_format->type == LXW_CONDITIONAL_3_COLOR_SCALE) {
+
+        _worksheet_write_cf_rule_color_scale(self, cond_format);
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_DATA_BAR) {
+
+        _worksheet_write_cf_rule_data_bar(self, cond_format);
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_TYPE_ICON_SETS) {
+
+        _worksheet_write_cf_rule_icons(self, cond_format);
+    }
+
+}
+
+/*
+ * Write the <conditionalFormatting> element.
+ */
+STATIC void
+_worksheet_write_conditional_formatting(lxw_worksheet *self,
+                                        lxw_cond_format_hash_element *element)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    lxw_cond_format_obj *cond_format;
+
+    LXW_INIT_ATTRIBUTES();
+    LXW_PUSH_ATTRIBUTES_STR("sqref", element->sqref);
+
+    lxw_xml_start_tag(self->file, "conditionalFormatting", &attributes);
+
+    STAILQ_FOREACH(cond_format, element->cond_formats, list_pointers) {
+        /* Write the cfRule element. */
+        _worksheet_write_cf_rule(self, cond_format);
+    }
+
+    lxw_xml_end_tag(self->file, "conditionalFormatting");
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the conditional formatting> elements.
+ */
+STATIC void
+_worksheet_write_conditional_formats(lxw_worksheet *self)
+{
+    lxw_cond_format_hash_element *element;
+    lxw_cond_format_hash_element *next_element;
+
+    for (element = RB_MIN(lxw_cond_format_hash, self->conditional_formats);
+         element; element = next_element) {
+
+        _worksheet_write_conditional_formatting(self, element);
+
+        next_element =
+            RB_NEXT(lxw_cond_format_hash, self->conditional_formats, element);
+    }
+}
+
+/*
+ * Write the <x14:xxxColor> elements for data bar conditional formats.
+ */
+STATIC void
+_worksheet_write_x14_color(lxw_worksheet *self, char *type, lxw_color_t color)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    char rgb[LXW_ATTR_32];
+
+    lxw_snprintf(rgb, LXW_ATTR_32, "FF%06X", color & LXW_COLOR_MASK);
+
+    LXW_INIT_ATTRIBUTES();
+    LXW_PUSH_ATTRIBUTES_STR("rgb", rgb);
+    lxw_xml_empty_tag(self->file, type, &attributes);
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <x14:cfvo> element.
+ */
+STATIC void
+_worksheet_write_x14_cfvo(lxw_worksheet *self, uint8_t rule_type,
+                          double number, char *string)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    char data[LXW_ATTR_32];
+    uint8_t has_value = LXW_FALSE;
+
+    LXW_INIT_ATTRIBUTES();
+
+    if (!string)
+        lxw_sprintf_dbl(data, number);
+
+    if (rule_type == LXW_CONDITIONAL_RULE_TYPE_AUTO_MIN) {
+        LXW_PUSH_ATTRIBUTES_STR("type", "autoMin");
+        has_value = LXW_FALSE;
+    }
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_MINIMUM) {
+        LXW_PUSH_ATTRIBUTES_STR("type", "min");
+        has_value = LXW_FALSE;
+    }
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_NUMBER) {
+        LXW_PUSH_ATTRIBUTES_STR("type", "num");
+        has_value = LXW_TRUE;
+    }
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_PERCENT) {
+        LXW_PUSH_ATTRIBUTES_STR("type", "percent");
+        has_value = LXW_TRUE;
+    }
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_PERCENTILE) {
+        LXW_PUSH_ATTRIBUTES_STR("type", "percentile");
+        has_value = LXW_TRUE;
+    }
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_FORMULA) {
+        LXW_PUSH_ATTRIBUTES_STR("type", "formula");
+        has_value = LXW_TRUE;
+    }
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_MAXIMUM) {
+        LXW_PUSH_ATTRIBUTES_STR("type", "max");
+        has_value = LXW_FALSE;
+    }
+    else if (rule_type == LXW_CONDITIONAL_RULE_TYPE_AUTO_MAX) {
+        LXW_PUSH_ATTRIBUTES_STR("type", "autoMax");
+        has_value = LXW_FALSE;
+    }
+
+    if (has_value) {
+        lxw_xml_start_tag(self->file, "x14:cfvo", &attributes);
+
+        if (string)
+            lxw_xml_data_element(self->file, "xm:f", string, NULL);
+        else
+            lxw_xml_data_element(self->file, "xm:f", data, NULL);
+
+        lxw_xml_end_tag(self->file, "x14:cfvo");
+    }
+    else {
+        lxw_xml_empty_tag(self->file, "x14:cfvo", &attributes);
+    }
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <x14:dataBar> element.
+ */
+STATIC void
+_worksheet_write_x14_data_bar(lxw_worksheet *self,
+                              lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    char min_length[] = "0";
+    char max_length[] = "100";
+    char border[] = "1";
+
+    LXW_INIT_ATTRIBUTES();
+    LXW_PUSH_ATTRIBUTES_STR("minLength", min_length);
+    LXW_PUSH_ATTRIBUTES_STR("maxLength", max_length);
+
+    if (!cond_format->bar_no_border)
+        LXW_PUSH_ATTRIBUTES_STR("border", border);
+
+    if (cond_format->bar_solid)
+        LXW_PUSH_ATTRIBUTES_STR("gradient", "0");
+
+    if (cond_format->bar_direction ==
+        LXW_CONDITIONAL_BAR_DIRECTION_RIGHT_TO_LEFT)
+        LXW_PUSH_ATTRIBUTES_STR("direction", "rightToLeft");
+
+    if (cond_format->bar_direction ==
+        LXW_CONDITIONAL_BAR_DIRECTION_LEFT_TO_RIGHT)
+        LXW_PUSH_ATTRIBUTES_STR("direction", "leftToRight");
+
+    if (cond_format->bar_negative_color_same)
+        LXW_PUSH_ATTRIBUTES_STR("negativeBarColorSameAsPositive", "1");
+
+    if (!cond_format->bar_no_border
+        && !cond_format->bar_negative_border_color_same)
+        LXW_PUSH_ATTRIBUTES_STR("negativeBarBorderColorSameAsPositive", "0");
+
+    if (cond_format->bar_axis_position == LXW_CONDITIONAL_BAR_AXIS_MIDPOINT)
+        LXW_PUSH_ATTRIBUTES_STR("axisPosition", "middle");
+
+    if (cond_format->bar_axis_position == LXW_CONDITIONAL_BAR_AXIS_NONE)
+        LXW_PUSH_ATTRIBUTES_STR("axisPosition", "none");
+
+    lxw_xml_start_tag(self->file, "x14:dataBar", &attributes);
+
+    if (cond_format->auto_min)
+        cond_format->min_rule_type = LXW_CONDITIONAL_RULE_TYPE_AUTO_MIN;
+
+    _worksheet_write_x14_cfvo(self, cond_format->min_rule_type,
+                              cond_format->min_value,
+                              cond_format->min_value_string);
+
+    if (cond_format->auto_max)
+        cond_format->max_rule_type = LXW_CONDITIONAL_RULE_TYPE_AUTO_MAX;
+
+    _worksheet_write_x14_cfvo(self, cond_format->max_rule_type,
+                              cond_format->max_value,
+                              cond_format->max_value_string);
+
+    if (!cond_format->bar_no_border)
+        _worksheet_write_x14_color(self, "x14:borderColor",
+                                   cond_format->bar_border_color);
+
+    if (!cond_format->bar_negative_color_same)
+        _worksheet_write_x14_color(self, "x14:negativeFillColor",
+                                   cond_format->bar_negative_color);
+
+    if (!cond_format->bar_no_border
+        && !cond_format->bar_negative_border_color_same)
+        _worksheet_write_x14_color(self, "x14:negativeBorderColor",
+                                   cond_format->bar_negative_border_color);
+
+    if (cond_format->bar_axis_position != LXW_CONDITIONAL_BAR_AXIS_NONE)
+        _worksheet_write_x14_color(self, "x14:axisColor",
+                                   cond_format->bar_axis_color);
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <x14:cfRule> element.
+ */
+STATIC void
+_worksheet_write_x14_cf_rule(lxw_worksheet *self,
+                             lxw_cond_format_obj *cond_format)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+
+    LXW_INIT_ATTRIBUTES();
+    LXW_PUSH_ATTRIBUTES_STR("type", "dataBar");
+    LXW_PUSH_ATTRIBUTES_STR("id", cond_format->guid);
+
+    lxw_xml_start_tag(self->file, "x14:cfRule", &attributes);
+
+    /* Write the x14:dataBar element. */
+    _worksheet_write_x14_data_bar(self, cond_format);
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <xm:sqref> element.
+ */
+STATIC void
+_worksheet_write_xm_sqref(lxw_worksheet *self,
+                          lxw_cond_format_obj *cond_format)
+{
+    lxw_xml_data_element(self->file, "xm:sqref", cond_format->sqref, NULL);
+}
+
+/*
+ * Write the <conditionalFormatting> element.
+ */
+STATIC void
+_worksheet_write_conditional_formatting_2010(lxw_worksheet *self, lxw_cond_format_hash_element
+                                             *element)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+    lxw_cond_format_obj *cond_format;
+
+    LXW_INIT_ATTRIBUTES();
+    LXW_PUSH_ATTRIBUTES_STR("xmlns:xm",
+                            "http://schemas.microsoft.com/office/excel/2006/main");
+
+    STAILQ_FOREACH(cond_format, element->cond_formats, list_pointers) {
+        if (!cond_format->data_bar_2010)
+            continue;
+
+        lxw_xml_start_tag(self->file, "x14:conditionalFormatting",
+                          &attributes);
+
+        _worksheet_write_x14_cf_rule(self, cond_format);
+
+        lxw_xml_end_tag(self->file, "x14:dataBar");
+        lxw_xml_end_tag(self->file, "x14:cfRule");
+        _worksheet_write_xm_sqref(self, cond_format);
+        lxw_xml_end_tag(self->file, "x14:conditionalFormatting");
+    }
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+/*
+ * Write the <extLst> element for Excel 2010 conditional formatting data bars.
+ */
+STATIC void
+_worksheet_write_ext_list_data_bars(lxw_worksheet *self)
+{
+    lxw_cond_format_hash_element *element;
+    lxw_cond_format_hash_element *next_element;
+
+    _worksheet_write_ext(self, "{78C0D931-6437-407d-A8EE-F0AAD7539E65}");
+    lxw_xml_start_tag(self->file, "x14:conditionalFormattings", NULL);
+
+    for (element = RB_MIN(lxw_cond_format_hash, self->conditional_formats);
+         element; element = next_element) {
+
+        _worksheet_write_conditional_formatting_2010(self, element);
+
+        next_element =
+            RB_NEXT(lxw_cond_format_hash, self->conditional_formats, element);
+    }
+
+    lxw_xml_end_tag(self->file, "x14:conditionalFormattings");
+    lxw_xml_end_tag(self->file, "ext");
+}
+
+/*
+ * Write the <extLst> element.
+ */
+STATIC void
+_worksheet_write_ext_list(lxw_worksheet *self)
+{
+    if (self->data_bar_2010_index == 0)
+        return;
+
+    lxw_xml_start_tag(self->file, "extLst", NULL);
+
+    _worksheet_write_ext_list_data_bars(self);
+
+    lxw_xml_end_tag(self->file, "extLst");
+}
+
+/*
+ * Write the <ignoredError> element.
+ */
+STATIC void
+_worksheet_write_ignored_error(lxw_worksheet *self, char *ignore_error,
+                               char *range)
+{
+    struct xml_attribute_list attributes;
+    struct xml_attribute *attribute;
+
+    LXW_INIT_ATTRIBUTES();
+    LXW_PUSH_ATTRIBUTES_STR("sqref", range);
+    LXW_PUSH_ATTRIBUTES_STR(ignore_error, "1");
+
+    lxw_xml_empty_tag(self->file, "ignoredError", &attributes);
+
+    LXW_FREE_ATTRIBUTES();
+}
+
+lxw_error
+_validate_conditional_icons(lxw_conditional_format *user)
+{
+    if (user->icon_style > LXW_CONDITIONAL_ICONS_5_QUARTERS) {
+
+        LXW_WARN_FORMAT1("worksheet_conditional_format_cell()/_range(): "
+                         "For type = LXW_CONDITIONAL_TYPE_ICON_SETS, "
+                         "invalid icon_style (%d).", user->icon_style);
+
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+    else {
+        return LXW_NO_ERROR;
+    }
+}
+
+lxw_error
+_validate_conditional_data_bar(lxw_worksheet *self,
+                               lxw_cond_format_obj *cond_format,
+                               lxw_conditional_format *user_options)
+{
+    uint8_t min_rule_type = user_options->min_rule_type;
+    uint8_t max_rule_type = user_options->max_rule_type;
+
+    if (user_options->data_bar_2010
+        || user_options->bar_solid
+        || user_options->bar_no_border
+        || user_options->bar_direction
+        || user_options->bar_axis_position
+        || user_options->bar_negative_color_same
+        || user_options->bar_negative_border_color_same
+        || user_options->bar_negative_color
+        || user_options->bar_border_color
+        || user_options->bar_negative_border_color
+        || user_options->bar_axis_color) {
+
+        cond_format->data_bar_2010 = LXW_TRUE;
+        self->excel_version = 2010;
+    }
+
+    if (min_rule_type > LXW_CONDITIONAL_RULE_TYPE_MINIMUM
+        && min_rule_type < LXW_CONDITIONAL_RULE_TYPE_MAXIMUM) {
+        cond_format->min_rule_type = min_rule_type;
+        cond_format->min_value = user_options->min_value;
+        cond_format->min_value_string =
+            lxw_strdup_formula(user_options->min_value_string);
+    }
+    else {
+        cond_format->min_rule_type = LXW_CONDITIONAL_RULE_TYPE_MINIMUM;
+        cond_format->min_value = 0;
+    }
+
+    if (max_rule_type > LXW_CONDITIONAL_RULE_TYPE_MINIMUM
+        && max_rule_type < LXW_CONDITIONAL_RULE_TYPE_MAXIMUM) {
+        cond_format->max_rule_type = max_rule_type;
+        cond_format->max_value = user_options->max_value;
+        cond_format->max_value_string =
+            lxw_strdup_formula(user_options->max_value_string);
+    }
+    else {
+        cond_format->max_rule_type = LXW_CONDITIONAL_RULE_TYPE_MAXIMUM;
+        cond_format->max_value = 0;
+    }
+
+    if (cond_format->data_bar_2010) {
+        if (min_rule_type == LXW_CONDITIONAL_RULE_TYPE_NONE)
+            cond_format->auto_min = LXW_TRUE;
+        if (max_rule_type == LXW_CONDITIONAL_RULE_TYPE_NONE)
+            cond_format->auto_max = LXW_TRUE;
+    }
+
+    cond_format->bar_only = user_options->bar_only;
+    cond_format->bar_solid = user_options->bar_solid;
+    cond_format->bar_no_border = user_options->bar_no_border;
+    cond_format->bar_direction = user_options->bar_direction;
+    cond_format->bar_axis_position = user_options->bar_axis_position;
+    cond_format->bar_negative_color_same =
+        user_options->bar_negative_color_same;
+    cond_format->bar_negative_border_color_same =
+        user_options->bar_negative_border_color_same;
+
+    if (user_options->bar_color != LXW_COLOR_UNSET)
+        cond_format->bar_color = user_options->bar_color;
+    else
+        cond_format->bar_color = 0x638EC6;
+
+    if (user_options->bar_negative_color != LXW_COLOR_UNSET)
+        cond_format->bar_negative_color = user_options->bar_negative_color;
+    else
+        cond_format->bar_negative_color = 0xFF0000;
+
+    if (user_options->bar_border_color != LXW_COLOR_UNSET)
+        cond_format->bar_border_color = user_options->bar_border_color;
+    else
+        cond_format->bar_border_color = cond_format->bar_color;
+
+    if (user_options->bar_negative_border_color != LXW_COLOR_UNSET)
+        cond_format->bar_negative_border_color =
+            user_options->bar_negative_border_color;
+    else
+        cond_format->bar_negative_border_color = 0xFF0000;
+
+    if (user_options->bar_axis_color != LXW_COLOR_UNSET)
+        cond_format->bar_axis_color = user_options->bar_axis_color;
+    else
+        cond_format->bar_axis_color = 0x000000;
+
+    return LXW_NO_ERROR;
+}
+
+lxw_error
+_validate_conditional_scale(lxw_cond_format_obj *cond_format,
+                            lxw_conditional_format *user_options)
+{
+    uint8_t min_rule_type = user_options->min_rule_type;
+    uint8_t mid_rule_type = user_options->mid_rule_type;
+    uint8_t max_rule_type = user_options->max_rule_type;
+
+    if (min_rule_type > LXW_CONDITIONAL_RULE_TYPE_MINIMUM
+        && min_rule_type < LXW_CONDITIONAL_RULE_TYPE_MAXIMUM) {
+        cond_format->min_rule_type = min_rule_type;
+        cond_format->min_value = user_options->min_value;
+        cond_format->min_value_string =
+            lxw_strdup_formula(user_options->min_value_string);
+    }
+    else {
+        cond_format->min_rule_type = LXW_CONDITIONAL_RULE_TYPE_MINIMUM;
+        cond_format->min_value = 0;
+    }
+
+    if (max_rule_type > LXW_CONDITIONAL_RULE_TYPE_MINIMUM
+        && max_rule_type < LXW_CONDITIONAL_RULE_TYPE_MAXIMUM) {
+        cond_format->max_rule_type = max_rule_type;
+        cond_format->max_value = user_options->max_value;
+        cond_format->max_value_string =
+            lxw_strdup_formula(user_options->max_value_string);
+    }
+    else {
+        cond_format->max_rule_type = LXW_CONDITIONAL_RULE_TYPE_MAXIMUM;
+        cond_format->max_value = 0;
+    }
+
+    if (cond_format->type == LXW_CONDITIONAL_3_COLOR_SCALE) {
+        if (mid_rule_type > LXW_CONDITIONAL_RULE_TYPE_MINIMUM
+            && mid_rule_type < LXW_CONDITIONAL_RULE_TYPE_MAXIMUM) {
+            cond_format->mid_rule_type = mid_rule_type;
+            cond_format->mid_value = user_options->mid_value;
+            cond_format->mid_value_string =
+                lxw_strdup_formula(user_options->mid_value_string);
+        }
+        else {
+            cond_format->mid_rule_type = LXW_CONDITIONAL_RULE_TYPE_PERCENTILE;
+            cond_format->mid_value = 50;
+        }
+    }
+
+    if (user_options->min_color != LXW_COLOR_UNSET)
+        cond_format->min_color = user_options->min_color;
+    else
+        cond_format->min_color = 0xFF7128;
+
+    if (user_options->max_color != LXW_COLOR_UNSET)
+        cond_format->max_color = user_options->max_color;
+    else
+        cond_format->max_color = 0xFFEF9C;
+
+    if (cond_format->type == LXW_CONDITIONAL_3_COLOR_SCALE) {
+        if (user_options->min_color == LXW_COLOR_UNSET)
+            cond_format->min_color = 0xF8696B;
+
+        if (user_options->mid_color != LXW_COLOR_UNSET)
+            cond_format->mid_color = user_options->mid_color;
+        else
+            cond_format->mid_color = 0xFFEB84;
+
+        if (user_options->max_color == LXW_COLOR_UNSET)
+            cond_format->max_color = 0x63BE7B;
+    }
+
+    return LXW_NO_ERROR;
+}
+
+lxw_error
+_validate_conditional_top(lxw_cond_format_obj *cond_format,
+                          lxw_conditional_format *user_options)
+{
+    /* Restrict the range of rank values to Excel's allowed range. */
+    if (user_options->criteria ==
+        LXW_CONDITIONAL_CRITERIA_TOP_OR_BOTTOM_PERCENT) {
+        if (user_options->value < 0.0 || user_options->value > 100.0) {
+
+            LXW_WARN_FORMAT1("worksheet_conditional_format_cell()/_range(): "
+                             "For type = LXW_CONDITIONAL_TYPE_TOP/BOTTOM, "
+                             "top/bottom percent (%g%%) must by in range 0-100",
+                             user_options->value);
+
+            return LXW_ERROR_PARAMETER_VALIDATION;
+        }
+    }
+    else {
+        if (user_options->value < 1.0 || user_options->value > 1000.0) {
+
+            LXW_WARN_FORMAT1("worksheet_conditional_format_cell()/_range(): "
+                             "For type = LXW_CONDITIONAL_TYPE_TOP/BOTTOM, "
+                             "top/bottom items (%g) must by in range 1-1000",
+                             user_options->value);
+
+            return LXW_ERROR_PARAMETER_VALIDATION;
+        }
+    }
+
+    cond_format->min_value = (uint16_t) user_options->value;
+
+    return LXW_NO_ERROR;
+}
+
+lxw_error
+_validate_conditional_average(lxw_conditional_format *user)
+{
+    if (user->criteria < LXW_CONDITIONAL_CRITERIA_AVERAGE_ABOVE ||
+        user->criteria > LXW_CONDITIONAL_CRITERIA_AVERAGE_3_STD_DEV_BELOW) {
+
+        LXW_WARN_FORMAT1("worksheet_conditional_format_cell()/_range(): "
+                         "For type = LXW_CONDITIONAL_TYPE_AVERAGE, "
+                         "invalid criteria value (%d).", user->criteria);
+
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+    else {
+        return LXW_NO_ERROR;
+    }
+}
+
+lxw_error
+_validate_conditional_time_period(lxw_conditional_format *user)
+{
+    if (user->criteria < LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_YESTERDAY ||
+        user->criteria > LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_NEXT_MONTH) {
+
+        LXW_WARN_FORMAT1("worksheet_conditional_format_cell()/_range(): "
+                         "For type = LXW_CONDITIONAL_TYPE_TIME_PERIOD, "
+                         "invalid criteria value (%d).", user->criteria);
+
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+    else {
+        return LXW_NO_ERROR;
+    }
+}
+
+lxw_error
+_validate_conditional_text(lxw_cond_format_obj *cond_format,
+                           lxw_conditional_format *user_options)
+{
+    if (!user_options->value_string) {
+
+        LXW_WARN_FORMAT("worksheet_conditional_format_cell()/_range(): "
+                        "For type = LXW_CONDITIONAL_TYPE_TEXT, "
+                        "value_string can not be NULL. "
+                        "Text must be specified.");
+
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+
+    if (strlen(user_options->value_string) >= LXW_MAX_ATTRIBUTE_LENGTH) {
+
+        LXW_WARN_FORMAT2("worksheet_conditional_format_cell()/_range(): "
+                         "For type = LXW_CONDITIONAL_TYPE_TEXT, "
+                         "value_string length (%d) must be less than %d.",
+                         (uint16_t) strlen(user_options->value_string),
+                         LXW_MAX_ATTRIBUTE_LENGTH);
+
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+
+    if (user_options->criteria < LXW_CONDITIONAL_CRITERIA_TEXT_CONTAINING ||
+        user_options->criteria > LXW_CONDITIONAL_CRITERIA_TEXT_ENDS_WITH) {
+
+        LXW_WARN_FORMAT1("worksheet_conditional_format_cell()/_range(): "
+                         "For type = LXW_CONDITIONAL_TYPE_TEXT, "
+                         "invalid criteria value (%d).",
+                         user_options->criteria);
+
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+
+    cond_format->min_value_string =
+        lxw_strdup_formula(user_options->value_string);
+
+    return LXW_NO_ERROR;
+}
+
+lxw_error
+_validate_conditional_formula(lxw_cond_format_obj *cond_format,
+                              lxw_conditional_format *user_options)
+{
+    if (!user_options->value_string) {
+
+        LXW_WARN_FORMAT("worksheet_conditional_format_cell()/_range(): "
+                        "For type = LXW_CONDITIONAL_TYPE_FORMULA, "
+                        "value_string can not be NULL. "
+                        "Formula must be specified.");
+
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+
+    cond_format->min_value_string =
+        lxw_strdup_formula(user_options->value_string);
+
+    return LXW_NO_ERROR;
+}
+
+lxw_error
+_validate_conditional_cell(lxw_cond_format_obj *cond_format,
+                           lxw_conditional_format *user_options)
+{
+    cond_format->min_value = user_options->value;
+    cond_format->min_value_string =
+        lxw_strdup_formula(user_options->value_string);
+
+    if (cond_format->criteria == LXW_CONDITIONAL_CRITERIA_BETWEEN
+        || cond_format->criteria == LXW_CONDITIONAL_CRITERIA_NOT_BETWEEN) {
+        cond_format->has_max = LXW_TRUE;
+        cond_format->min_value = user_options->min_value;
+        cond_format->max_value = user_options->max_value;
+        cond_format->min_value_string =
+            lxw_strdup_formula(user_options->min_value_string);
+        cond_format->max_value_string =
+            lxw_strdup_formula(user_options->max_value_string);
+    }
+
+    return LXW_NO_ERROR;
+}
+
+/*
+ * Write the <ignoredErrors> element.
+ */
+STATIC void
+_worksheet_write_ignored_errors(lxw_worksheet *self)
+{
+    if (!self->has_ignore_errors)
+        return;
+
+    lxw_xml_start_tag(self->file, "ignoredErrors", NULL);
+
+    if (self->ignore_number_stored_as_text) {
+        _worksheet_write_ignored_error(self, "numberStoredAsText",
+                                       self->ignore_number_stored_as_text);
+    }
+
+    if (self->ignore_eval_error) {
+        _worksheet_write_ignored_error(self, "evalError",
+                                       self->ignore_eval_error);
+    }
+
+    if (self->ignore_formula_differs) {
+        _worksheet_write_ignored_error(self, "formula",
+                                       self->ignore_formula_differs);
+    }
+
+    if (self->ignore_formula_range) {
+        _worksheet_write_ignored_error(self, "formulaRange",
+                                       self->ignore_formula_range);
+    }
+
+    if (self->ignore_formula_unlocked) {
+        _worksheet_write_ignored_error(self, "unlockedFormula",
+                                       self->ignore_formula_unlocked);
+    }
+
+    if (self->ignore_empty_cell_reference) {
+        _worksheet_write_ignored_error(self, "emptyCellReference",
+                                       self->ignore_empty_cell_reference);
+    }
+
+    if (self->ignore_list_data_validation) {
+        _worksheet_write_ignored_error(self, "listDataValidation",
+                                       self->ignore_list_data_validation);
+    }
+
+    if (self->ignore_calculated_column) {
+        _worksheet_write_ignored_error(self, "calculatedColumn",
+                                       self->ignore_calculated_column);
+    }
+
+    if (self->ignore_two_digit_text_year) {
+        _worksheet_write_ignored_error(self, "twoDigitTextYear",
+                                       self->ignore_two_digit_text_year);
+    }
+
+    lxw_xml_end_tag(self->file, "ignoredErrors");
+}
+
+/*
  * External functions to call intern XML methods shared with chartsheet.
  */
 void
@@ -4441,6 +6551,9 @@ lxw_worksheet_assemble_xml_file(lxw_worksheet *self)
     /* Write the mergeCells element. */
     _worksheet_write_merge_cells(self);
 
+    /* Write the conditionalFormatting elements. */
+    _worksheet_write_conditional_formats(self);
+
     /* Write the dataValidations element. */
     _worksheet_write_data_validations(self);
 
@@ -4465,11 +6578,20 @@ lxw_worksheet_assemble_xml_file(lxw_worksheet *self)
     /* Write the colBreaks element. */
     _worksheet_write_col_breaks(self);
 
+    /* Write the ignoredErrors element. */
+    _worksheet_write_ignored_errors(self);
+
     /* Write the drawing element. */
     _worksheet_write_drawings(self);
 
     /* Write the legacyDrawing element. */
     _worksheet_write_legacy_drawing(self);
+
+    /* Write the legacyDrawingHF element. */
+    _worksheet_write_legacy_drawing_hf(self);
+
+    /* Write the extLst element. */
+    _worksheet_write_ext_list(self);
 
     /* Close the worksheet tag. */
     lxw_xml_end_tag(self->file, "worksheet");
@@ -4547,9 +6669,7 @@ worksheet_write_string(lxw_worksheet *self,
     }
     else {
         /* Look for and escape control chars in the string. */
-        if (strpbrk(string, "\x01\x02\x03\x04\x05\x06\x07\x08\x0B\x0C"
-                    "\x0D\x0E\x0F\x10\x11\x12\x13\x14\x15\x16"
-                    "\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F")) {
+        if (lxw_has_control_characters(string)) {
             string_copy = lxw_escape_control_characters(string);
         }
         else {
@@ -4592,6 +6712,41 @@ worksheet_write_formula_num(lxw_worksheet *self,
 
     cell = _new_formula_cell(row_num, col_num, formula_copy, format);
     cell->formula_result = result;
+
+    _insert_cell(self, row_num, col_num, cell);
+
+    return LXW_NO_ERROR;
+}
+
+/*
+ * Write a formula with a string result to a cell in Excel.
+ */
+lxw_error
+worksheet_write_formula_str(lxw_worksheet *self,
+                            lxw_row_t row_num,
+                            lxw_col_t col_num,
+                            const char *formula,
+                            lxw_format *format, const char *result)
+{
+    lxw_cell *cell;
+    char *formula_copy;
+    lxw_error err;
+
+    if (!formula)
+        return LXW_ERROR_NULL_PARAMETER_IGNORED;
+
+    err = _check_dimensions(self, row_num, col_num, LXW_FALSE, LXW_FALSE);
+    if (err)
+        return err;
+
+    /* Strip leading "=" from formula. */
+    if (formula[0] == '=')
+        formula_copy = lxw_strdup(formula + 1);
+    else
+        formula_copy = lxw_strdup(formula);
+
+    cell = _new_formula_cell(row_num, col_num, formula_copy, format);
+    cell->user_data2 = lxw_strdup(result);
 
     _insert_cell(self, row_num, col_num, cell);
 
@@ -4645,7 +6800,11 @@ worksheet_write_array_formula_num(lxw_worksheet *self,
     if (!formula)
         return LXW_ERROR_NULL_PARAMETER_IGNORED;
 
-    /* Check that column number is valid and store the max value */
+    /* Check that row and col are valid and store max and min values. */
+    err = _check_dimensions(self, first_row, first_col, LXW_FALSE, LXW_FALSE);
+    if (err)
+        return err;
+
     err = _check_dimensions(self, last_row, last_col, LXW_FALSE, LXW_FALSE);
     if (err)
         return err;
@@ -4776,7 +6935,7 @@ worksheet_write_datetime(lxw_worksheet *self,
     if (err)
         return err;
 
-    excel_date = lxw_datetime_to_excel_date(datetime, LXW_EPOCH_1900);
+    excel_date = lxw_datetime_to_excel_date_epoch(datetime, LXW_EPOCH_1900);
 
     cell = _new_number_cell(row_num, col_num, excel_date, format);
 
@@ -5116,9 +7275,7 @@ worksheet_write_rich_string(lxw_worksheet *self,
     }
     else {
         /* Look for and escape control chars in the string. */
-        if (strpbrk(rich_string, "\x01\x02\x03\x04\x05\x06\x07\x08\x0B\x0C"
-                    "\x0D\x0E\x0F\x10\x11\x12\x13\x14\x15\x16"
-                    "\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F")) {
+        if (lxw_has_control_characters(rich_string)) {
             string_copy = lxw_escape_control_characters(rich_string);
             free(rich_string);
         }
@@ -5771,10 +7928,11 @@ lxw_error
 worksheet_set_header_opt(lxw_worksheet *self, const char *string,
                          lxw_header_footer_options *options)
 {
-    if (options) {
-        if (options->margin >= 0.0)
-            self->margin_header = options->margin;
-    }
+    lxw_error err;
+    char *found_string;
+    char *offset_string;
+    uint8_t placeholder_count = 0;
+    uint8_t image_count = 0;
 
     if (!string)
         return LXW_ERROR_NULL_PARAMETER_IGNORED;
@@ -5783,6 +7941,89 @@ worksheet_set_header_opt(lxw_worksheet *self, const char *string,
         return LXW_ERROR_255_STRING_LENGTH_EXCEEDED;
 
     lxw_strcpy(self->header, string);
+
+    /* Replace &[Picture] with &G which is used internally by Excel. */
+    while ((found_string = strstr(self->header, "&[Picture]"))) {
+        found_string++;
+        *found_string = 'G';
+
+        do {
+            found_string++;
+            offset_string = found_string + sizeof("Picture");
+            *found_string = *offset_string;
+        } while (*offset_string);
+    }
+
+    /* Count &G placeholders and ensure there are sufficient images. */
+    found_string = self->header;
+    while (*found_string) {
+        if (*found_string == '&' && *(found_string + 1) == 'G')
+            placeholder_count++;
+        found_string++;
+    }
+
+    if (placeholder_count > 0 && !options) {
+        LXW_WARN_FORMAT1("worksheet_set_header_opt/footer_opt(): "
+                         "the number of &G/&[Picture] placeholders in option "
+                         "string \"%s\" does not match the number of supplied "
+                         "images.", string);
+
+        /* Reset the header string. */
+        self->header[0] = '\0';
+
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+
+    if (options) {
+        /* Ensure there are enough images to match the placeholders. There is
+         * a potential bug where there are sufficient images but in the wrong
+         * positions but we don't currently try to deal with that.*/
+        if (options->image_left)
+            image_count++;
+        if (options->image_center)
+            image_count++;
+        if (options->image_right)
+            image_count++;
+
+        if (placeholder_count != image_count) {
+            LXW_WARN_FORMAT1("worksheet_set_header_opt/footer_opt(): "
+                             "the number of &G/&[Picture] placeholders in option "
+                             "string \"%s\" does not match the number of supplied "
+                             "images.", string);
+
+            /* Reset the header string. */
+            self->header[0] = '\0';
+
+            return LXW_ERROR_PARAMETER_VALIDATION;
+        }
+
+        /* Free any existing header image objects. */
+        _free_object_properties(self->header_left_object_props);
+        _free_object_properties(self->header_center_object_props);
+        _free_object_properties(self->header_right_object_props);
+
+        if (options->margin > 0.0)
+            self->margin_header = options->margin;
+
+        err = _worksheet_set_header_footer_image(self,
+                                                 options->image_left,
+                                                 HEADER_LEFT);
+        if (err)
+            return err;
+
+        err = _worksheet_set_header_footer_image(self,
+                                                 options->image_center,
+                                                 HEADER_CENTER);
+        if (err)
+            return err;
+
+        err = _worksheet_set_header_footer_image(self,
+                                                 options->image_right,
+                                                 HEADER_RIGHT);
+        if (err)
+            return err;
+    }
+
     self->header_footer_changed = 1;
 
     return LXW_NO_ERROR;
@@ -5795,10 +8036,11 @@ lxw_error
 worksheet_set_footer_opt(lxw_worksheet *self, const char *string,
                          lxw_header_footer_options *options)
 {
-    if (options) {
-        if (options->margin >= 0.0)
-            self->margin_footer = options->margin;
-    }
+    lxw_error err;
+    char *found_string;
+    char *offset_string;
+    uint8_t placeholder_count = 0;
+    uint8_t image_count = 0;
 
     if (!string)
         return LXW_ERROR_NULL_PARAMETER_IGNORED;
@@ -5807,6 +8049,91 @@ worksheet_set_footer_opt(lxw_worksheet *self, const char *string,
         return LXW_ERROR_255_STRING_LENGTH_EXCEEDED;
 
     lxw_strcpy(self->footer, string);
+
+    /* Replace &[Picture] with &G which is used internally by Excel. */
+    while ((found_string = strstr(self->footer, "&[Picture]"))) {
+        found_string++;
+        *found_string = 'G';
+
+        do {
+            found_string++;
+            offset_string = found_string + sizeof("Picture");
+            *found_string = *offset_string;
+        } while (*offset_string);
+    }
+
+    /* Count &G placeholders and ensure there are sufficient images. */
+    found_string = self->footer;
+    while (*found_string) {
+        if (*found_string == '&' && *(found_string + 1) == 'G')
+            placeholder_count++;
+        found_string++;
+    }
+
+    if (placeholder_count > 0 && !options) {
+        LXW_WARN_FORMAT1("worksheet_set_header_opt/footer_opt(): "
+                         "the number of &G/&[Picture] placeholders in option "
+                         "string \"%s\" does not match the number of supplied "
+                         "images.", string);
+
+        /* Reset the footer string. */
+        self->footer[0] = '\0';
+
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+
+    if (options) {
+        /* Ensure there are enough images to match the placeholders. There is
+         * a potential bug where there are sufficient images but in the wrong
+         * positions but we don't currently try to deal with that.*/
+        if (options->image_left)
+            image_count++;
+        if (options->image_center)
+            image_count++;
+        if (options->image_right)
+            image_count++;
+
+        if (placeholder_count != image_count) {
+            LXW_WARN_FORMAT1("worksheet_set_header_opt/footer_opt(): "
+                             "the number of &G/&[Picture] placeholders in option "
+                             "string \"%s\" does not match the number of supplied "
+                             "images.", string);
+
+            /* Reset the header string. */
+            self->footer[0] = '\0';
+
+            return LXW_ERROR_PARAMETER_VALIDATION;
+        }
+
+        /* Free any existing footer image objects. */
+        _free_object_properties(self->footer_left_object_props);
+        _free_object_properties(self->footer_center_object_props);
+        _free_object_properties(self->footer_right_object_props);
+
+        if (options->margin > 0.0)
+            self->margin_footer = options->margin;
+
+        err = _worksheet_set_header_footer_image(self,
+                                                 options->image_left,
+                                                 FOOTER_LEFT);
+        if (err)
+            return err;
+
+        err = _worksheet_set_header_footer_image(self,
+                                                 options->image_center,
+                                                 FOOTER_CENTER);
+        if (err)
+            return err;
+
+        if (options->image_right) {
+            err = _worksheet_set_header_footer_image(self,
+                                                     options->image_right,
+                                                     FOOTER_RIGHT);
+            if (err)
+                return err;
+        }
+    }
+
     self->header_footer_changed = 1;
 
     return LXW_NO_ERROR;
@@ -6300,9 +8627,14 @@ worksheet_insert_image_buffer_opt(lxw_worksheet *self,
         return LXW_ERROR_NULL_PARAMETER_IGNORED;
     }
 
-    /* Write the image buffer to a temporary file so we can read the
-     * dimensions like an ordinary file. */
+    /* Write the image buffer to a file (preferably in memory) so we can read
+     * the dimensions like an ordinary file. */
+#ifdef USE_FMEMOPEN
+    image_stream = fmemopen(NULL, image_size, "w+b");
+#else
     image_stream = lxw_tmpfile(self->tmpdir);
+#endif
+
     if (!image_stream)
         return LXW_ERROR_CREATING_TMPFILE;
 
@@ -6338,6 +8670,8 @@ worksheet_insert_image_buffer_opt(lxw_worksheet *self,
         object_props->y_offset = user_options->y_offset;
         object_props->x_scale = user_options->x_scale;
         object_props->y_scale = user_options->y_scale;
+        object_props->url = lxw_strdup(user_options->url);
+        object_props->tip = lxw_strdup(user_options->tip);
         object_props->object_position = user_options->object_position;
         object_props->description = lxw_strdup(user_options->description);
     }
@@ -6708,16 +9042,18 @@ worksheet_data_validation_range(lxw_worksheet *self, lxw_row_t first_row,
         || validation->validate == LXW_VALIDATION_TYPE_TIME) {
         if (is_between) {
             copy->value_number =
-                lxw_datetime_to_excel_date(&validation->minimum_datetime,
-                                           LXW_EPOCH_1900);
+                lxw_datetime_to_excel_date_epoch(&validation->
+                                                 minimum_datetime,
+                                                 LXW_EPOCH_1900);
             copy->maximum_number =
-                lxw_datetime_to_excel_date(&validation->maximum_datetime,
-                                           LXW_EPOCH_1900);
+                lxw_datetime_to_excel_date_epoch(&validation->
+                                                 maximum_datetime,
+                                                 LXW_EPOCH_1900);
         }
         else {
             copy->value_number =
-                lxw_datetime_to_excel_date(&validation->value_datetime,
-                                           LXW_EPOCH_1900);
+                lxw_datetime_to_excel_date_epoch(&validation->value_datetime,
+                                                 LXW_EPOCH_1900);
         }
     }
 
@@ -6746,6 +9082,202 @@ worksheet_data_validation_cell(lxw_worksheet *self, lxw_row_t row,
 {
     return worksheet_data_validation_range(self, row, col,
                                            row, col, validation);
+}
+
+/*
+ * Add a conditional format to a worksheet, for a range.
+ */
+lxw_error
+worksheet_conditional_format_range(lxw_worksheet *self, lxw_row_t first_row,
+                                   lxw_col_t first_col,
+                                   lxw_row_t last_row,
+                                   lxw_col_t last_col,
+                                   lxw_conditional_format *user_options)
+{
+    lxw_cond_format_obj *cond_format;
+    lxw_row_t tmp_row;
+    lxw_col_t tmp_col;
+    lxw_error err = LXW_NO_ERROR;
+    char *type_strings[] = {
+        "none",
+        "cellIs",
+        "containsText",
+        "timePeriod",
+        "aboveAverage",
+        "duplicateValues",
+        "uniqueValues",
+        "top10",
+        "top10",
+        "containsBlanks",
+        "notContainsBlanks",
+        "containsErrors",
+        "notContainsErrors",
+        "expression",
+        "colorScale",
+        "colorScale",
+        "dataBar",
+        "iconSet",
+    };
+
+    /* Swap last row/col with first row/col as necessary */
+    if (first_row > last_row) {
+        tmp_row = last_row;
+        last_row = first_row;
+        first_row = tmp_row;
+    }
+    if (first_col > last_col) {
+        tmp_col = last_col;
+        last_col = first_col;
+        first_col = tmp_col;
+    }
+
+    /* Check that dimensions are valid but don't store them. */
+    err = _check_dimensions(self, last_row, last_col, LXW_TRUE, LXW_TRUE);
+    if (err)
+        return err;
+
+    /* Check the validation type is in correct enum range. */
+    if (user_options->type <= LXW_CONDITIONAL_TYPE_NONE ||
+        user_options->type >= LXW_CONDITIONAL_TYPE_LAST) {
+
+        LXW_WARN_FORMAT1("worksheet_conditional_format_cell()/_range(): "
+                         "invalid type value (%d).", user_options->type);
+
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+
+    /* Create a copy of the parameters from the user data validation. */
+    cond_format = calloc(1, sizeof(lxw_cond_format_obj));
+    GOTO_LABEL_ON_MEM_ERROR(cond_format, error);
+
+    /* Create the data validation range. */
+    if (first_row == last_row && first_col == last_col)
+        lxw_rowcol_to_cell(cond_format->sqref, first_row, last_col);
+    else
+        lxw_rowcol_to_range(cond_format->sqref, first_row, first_col,
+                            last_row, last_col);
+
+    /* Store the first cell string for text and date rules. */
+    lxw_rowcol_to_cell(cond_format->first_cell, first_row, last_col);
+
+    /* Overwrite the sqref range with a user supplied set of ranges. */
+    if (user_options->multi_range) {
+
+        if (strlen(user_options->multi_range) >= LXW_MAX_ATTRIBUTE_LENGTH) {
+            LXW_WARN_FORMAT1("worksheet_conditional_format_cell()/_range(): "
+                             "multi_range >= limit = %d.",
+                             LXW_MAX_ATTRIBUTE_LENGTH);
+            err = LXW_ERROR_PARAMETER_VALIDATION;
+            goto error;
+        }
+
+        LXW_ATTRIBUTE_COPY(cond_format->sqref, user_options->multi_range);
+    }
+
+    /* Get the conditional format dxf format index. */
+    if (user_options->format)
+        cond_format->dxf_index =
+            lxw_format_get_dxf_index(user_options->format);
+    else
+        cond_format->dxf_index = LXW_PROPERTY_UNSET;
+
+    /* Set some common option for all validation types. */
+    cond_format->type = user_options->type;
+    cond_format->criteria = user_options->criteria;
+    cond_format->stop_if_true = user_options->stop_if_true;
+    cond_format->type_string = lxw_strdup(type_strings[cond_format->type]);
+
+    /* Validate the user input for various types of rules. */
+    if (user_options->type == LXW_CONDITIONAL_TYPE_CELL
+        || cond_format->type == LXW_CONDITIONAL_TYPE_DUPLICATE
+        || cond_format->type == LXW_CONDITIONAL_TYPE_UNIQUE) {
+
+        err = _validate_conditional_cell(cond_format, user_options);
+        if (err)
+            goto error;
+    }
+    else if (user_options->type == LXW_CONDITIONAL_TYPE_TEXT) {
+
+        err = _validate_conditional_text(cond_format, user_options);
+        if (err)
+            goto error;
+    }
+    else if (user_options->type == LXW_CONDITIONAL_TYPE_TIME_PERIOD) {
+
+        err = _validate_conditional_time_period(user_options);
+        if (err)
+            goto error;
+    }
+    else if (user_options->type == LXW_CONDITIONAL_TYPE_AVERAGE) {
+
+        err = _validate_conditional_average(user_options);
+        if (err)
+            goto error;
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_TYPE_TOP
+             || cond_format->type == LXW_CONDITIONAL_TYPE_BOTTOM) {
+
+        err = _validate_conditional_top(cond_format, user_options);
+        if (err)
+            goto error;
+    }
+    else if (user_options->type == LXW_CONDITIONAL_TYPE_FORMULA) {
+
+        err = _validate_conditional_formula(cond_format, user_options);
+        if (err)
+            goto error;
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_2_COLOR_SCALE
+             || cond_format->type == LXW_CONDITIONAL_3_COLOR_SCALE) {
+
+        err = _validate_conditional_scale(cond_format, user_options);
+        if (err)
+            goto error;
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_DATA_BAR) {
+
+        err = _validate_conditional_data_bar(self, cond_format, user_options);
+        if (err)
+            goto error;
+    }
+    else if (cond_format->type == LXW_CONDITIONAL_TYPE_ICON_SETS) {
+
+        err = _validate_conditional_icons(user_options);
+        if (err)
+            goto error;
+
+        cond_format->icon_style = user_options->icon_style;
+        cond_format->reverse_icons = user_options->reverse_icons;
+        cond_format->icons_only = user_options->icons_only;
+    }
+
+    /* Set the priority based on the order of adding. */
+    cond_format->dxf_priority = ++self->dxf_priority;
+
+    /* Store the conditional format object. */
+    err = _store_conditional_format_object(self, cond_format);
+
+    if (err)
+        goto error;
+    else
+        return LXW_NO_ERROR;
+
+error:
+    _free_cond_format(cond_format);
+    return err;
+}
+
+/*
+ * Add a conditional format to a worksheet, for a cell.
+ */
+lxw_error
+worksheet_conditional_format_cell(lxw_worksheet *self,
+                                  lxw_row_t row,
+                                  lxw_col_t col,
+                                  lxw_conditional_format *options)
+{
+    return worksheet_conditional_format_range(self, row, col,
+                                              row, col, options);
 }
 
 /*
@@ -6780,4 +9312,63 @@ void
 worksheet_show_comments(lxw_worksheet *self)
 {
     self->comment_display_default = LXW_COMMENT_DISPLAY_VISIBLE;
+}
+
+/*
+ * Ignore various Excel errors/warnings in a worksheet for user defined ranges.
+ */
+lxw_error
+worksheet_ignore_errors(lxw_worksheet *self, uint8_t type, const char *range)
+{
+    if (!range) {
+        LXW_WARN("worksheet_ignore_errors(): " "'range' must be specified.");
+        return LXW_ERROR_NULL_PARAMETER_IGNORED;
+    }
+
+    if (type <= 0 || type >= LXW_IGNORE_LAST_OPTION) {
+        LXW_WARN("worksheet_ignore_errors(): " "unknown option in 'type'.");
+        return LXW_ERROR_NULL_PARAMETER_IGNORED;
+    }
+
+    /* Set the ranges to be ignored. */
+    if (type == LXW_IGNORE_NUMBER_STORED_AS_TEXT) {
+        free(self->ignore_number_stored_as_text);
+        self->ignore_number_stored_as_text = lxw_strdup(range);
+    }
+    else if (type == LXW_IGNORE_EVAL_ERROR) {
+        free(self->ignore_eval_error);
+        self->ignore_eval_error = lxw_strdup(range);
+    }
+    else if (type == LXW_IGNORE_FORMULA_DIFFERS) {
+        free(self->ignore_formula_differs);
+        self->ignore_formula_differs = lxw_strdup(range);
+    }
+    else if (type == LXW_IGNORE_FORMULA_RANGE) {
+        free(self->ignore_formula_range);
+        self->ignore_formula_range = lxw_strdup(range);
+    }
+    else if (type == LXW_IGNORE_FORMULA_UNLOCKED) {
+        free(self->ignore_formula_unlocked);
+        self->ignore_formula_unlocked = lxw_strdup(range);
+    }
+    else if (type == LXW_IGNORE_EMPTY_CELL_REFERENCE) {
+        free(self->ignore_empty_cell_reference);
+        self->ignore_empty_cell_reference = lxw_strdup(range);
+    }
+    else if (type == LXW_IGNORE_LIST_DATA_VALIDATION) {
+        free(self->ignore_list_data_validation);
+        self->ignore_list_data_validation = lxw_strdup(range);
+    }
+    else if (type == LXW_IGNORE_CALCULATED_COLUMN) {
+        free(self->ignore_calculated_column);
+        self->ignore_calculated_column = lxw_strdup(range);
+    }
+    else if (type == LXW_IGNORE_TWO_DIGIT_TEXT_YEAR) {
+        free(self->ignore_two_digit_text_year);
+        self->ignore_two_digit_text_year = lxw_strdup(range);
+    }
+
+    self->has_ignore_errors = LXW_TRUE;
+
+    return LXW_NO_ERROR;
 }

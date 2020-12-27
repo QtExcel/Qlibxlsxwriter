@@ -115,9 +115,6 @@ typedef enum lxw_error {
     /** Worksheet name is already in use. */
     LXW_ERROR_SHEETNAME_ALREADY_USED,
 
-    /** Worksheet name 'History' is reserved by Excel. */
-    LXW_ERROR_SHEETNAME_RESERVED,
-
     /** Parameter exceeds Excel's limit of 32 characters. */
     LXW_ERROR_32_STRING_LENGTH_EXCEEDED,
 
@@ -204,6 +201,9 @@ enum lxw_custom_property_types {
 
 /* Datetime string length. */
 #define LXW_DATETIME_LENGTH       sizeof("2016-12-12T23:00:00Z")
+
+/* GUID string length. */
+#define LXW_GUID_LENGTH           sizeof("{12345678-1234-1234-1234-1234567890AB}")
 
 #define LXW_EPOCH_1900            0
 #define LXW_EPOCH_1904            1

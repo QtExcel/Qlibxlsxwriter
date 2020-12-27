@@ -46,7 +46,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "shared_strings.h"
 #include "chart.h"
@@ -57,13 +56,14 @@
 #include "utility.h"
 #include "relationships.h"
 
-#define LXW_ROW_MAX           1048576
-#define LXW_COL_MAX           16384
-#define LXW_COL_META_MAX      128
-#define LXW_HEADER_FOOTER_MAX 255
-#define LXW_MAX_NUMBER_URLS   65530
-#define LXW_PANE_NAME_LENGTH  12        /* bottomRight + 1 */
-#define LXW_IMAGE_BUFFER_SIZE 1024
+#define LXW_ROW_MAX           		1048576
+#define LXW_COL_MAX           		16384
+#define LXW_COL_META_MAX      		128
+#define LXW_HEADER_FOOTER_MAX 		255
+#define LXW_MAX_NUMBER_URLS   		65530
+#define LXW_PANE_NAME_LENGTH  		12      /* bottomRight + 1 */
+#define LXW_IMAGE_BUFFER_SIZE      	1024
+#define LXW_HEADER_FOOTER_OBJS_MAX 	6       /* Header/footer image objs. */
 
 /* The Excel 2007 specification says that the maximum number of page
  * breaks is 1026. However, in practice it is actually 1023. */
@@ -218,6 +218,318 @@ enum lxw_comment_display_types {
     LXW_COMMENT_DISPLAY_VISIBLE
 };
 
+/** @brief Type definitions for conditional formats.
+ *
+ * Values used to set the "type" field of conditional format.
+ */
+enum lxw_conditional_format_types {
+    LXW_CONDITIONAL_TYPE_NONE,
+
+    /** The Cell type is the most common conditional formatting type. It is
+     *  used when a format is applied to a cell based on a simple
+     *  criterion.  */
+    LXW_CONDITIONAL_TYPE_CELL,
+
+    /** The Text type is used to specify Excel's "Specific Text" style
+     *  conditional format. */
+    LXW_CONDITIONAL_TYPE_TEXT,
+
+    /** The Time Period type is used to specify Excel's "Dates Occurring"
+     *  style conditional format. */
+    LXW_CONDITIONAL_TYPE_TIME_PERIOD,
+
+    /** The Average type is used to specify Excel's "Average" style
+     *  conditional format. */
+    LXW_CONDITIONAL_TYPE_AVERAGE,
+
+    /** The Duplicate type is used to highlight duplicate cells in a range. */
+    LXW_CONDITIONAL_TYPE_DUPLICATE,
+
+    /** The Unique type is used to highlight unique cells in a range. */
+    LXW_CONDITIONAL_TYPE_UNIQUE,
+
+    /** The Top type is used to specify the top n values by number or
+     *  percentage in a range. */
+    LXW_CONDITIONAL_TYPE_TOP,
+
+    /** The Bottom type is used to specify the bottom n values by number or
+     *  percentage in a range. */
+    LXW_CONDITIONAL_TYPE_BOTTOM,
+
+    /** The Blanks type is used to highlight blank cells in a range. */
+    LXW_CONDITIONAL_TYPE_BLANKS,
+
+    /** The No Blanks type is used to highlight non blank cells in a range. */
+    LXW_CONDITIONAL_TYPE_NO_BLANKS,
+
+    /** The Errors type is used to highlight error cells in a range. */
+    LXW_CONDITIONAL_TYPE_ERRORS,
+
+    /** The No Errors type is used to highlight non error cells in a range. */
+    LXW_CONDITIONAL_TYPE_NO_ERRORS,
+
+    /** The Formula type is used to specify a conditional format based on a
+     *  user defined formula. */
+    LXW_CONDITIONAL_TYPE_FORMULA,
+
+    /** The 2 Color Scale type is used to specify Excel's "2 Color Scale"
+     *  style conditional format. */
+    LXW_CONDITIONAL_2_COLOR_SCALE,
+
+    /** The 3 Color Scale type is used to specify Excel's "3 Color Scale"
+     *  style conditional format. */
+    LXW_CONDITIONAL_3_COLOR_SCALE,
+
+    /** The Data Bar type is used to specify Excel's "Data Bar" style
+     *  conditional format. */
+    LXW_CONDITIONAL_DATA_BAR,
+
+    /** The Icon Set type is used to specify a conditional format with a set
+     *  of icons such as traffic lights or arrows. */
+    LXW_CONDITIONAL_TYPE_ICON_SETS,
+
+    LXW_CONDITIONAL_TYPE_LAST
+};
+
+/** @brief The criteria used in a conditional format.
+ *
+ * Criteria used to define how a conditional format works.
+ */
+enum lxw_conditional_criteria {
+    LXW_CONDITIONAL_CRITERIA_NONE,
+
+    /** Format cells equal to a value. */
+    LXW_CONDITIONAL_CRITERIA_EQUAL_TO,
+
+    /** Format cells not equal to a value. */
+    LXW_CONDITIONAL_CRITERIA_NOT_EQUAL_TO,
+
+    /** Format cells greater than a value. */
+    LXW_CONDITIONAL_CRITERIA_GREATER_THAN,
+
+    /** Format cells less than a value. */
+    LXW_CONDITIONAL_CRITERIA_LESS_THAN,
+
+    /** Format cells greater than or equal to a value. */
+    LXW_CONDITIONAL_CRITERIA_GREATER_THAN_OR_EQUAL_TO,
+
+    /** Format cells less than or equal to a value. */
+    LXW_CONDITIONAL_CRITERIA_LESS_THAN_OR_EQUAL_TO,
+
+    /** Format cells between two values. */
+    LXW_CONDITIONAL_CRITERIA_BETWEEN,
+
+    /** Format cells that is not between two values. */
+    LXW_CONDITIONAL_CRITERIA_NOT_BETWEEN,
+
+    /** Format cells that contain the specified text. */
+    LXW_CONDITIONAL_CRITERIA_TEXT_CONTAINING,
+
+    /** Format cells that don't contain the specified text. */
+    LXW_CONDITIONAL_CRITERIA_TEXT_NOT_CONTAINING,
+
+    /** Format cells that begin with the specified text. */
+    LXW_CONDITIONAL_CRITERIA_TEXT_BEGINS_WITH,
+
+    /** Format cells that end with the specified text. */
+    LXW_CONDITIONAL_CRITERIA_TEXT_ENDS_WITH,
+
+    /** Format cells with a date of yesterday. */
+    LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_YESTERDAY,
+
+    /** Format cells with a date of today. */
+    LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_TODAY,
+
+    /** Format cells with a date of tomorrow. */
+    LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_TOMORROW,
+
+    /** Format cells with a date in the last 7 days. */
+    LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_LAST_7_DAYS,
+
+    /** Format cells with a date in the last week. */
+    LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_LAST_WEEK,
+
+    /** Format cells with a date in the current week. */
+    LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_THIS_WEEK,
+
+    /** Format cells with a date in the next week. */
+    LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_NEXT_WEEK,
+
+    /** Format cells with a date in the last month. */
+    LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_LAST_MONTH,
+
+    /** Format cells with a date in the current month. */
+    LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_THIS_MONTH,
+
+    /** Format cells with a date in the next month. */
+    LXW_CONDITIONAL_CRITERIA_TIME_PERIOD_NEXT_MONTH,
+
+    /** Format cells above the average for the range. */
+    LXW_CONDITIONAL_CRITERIA_AVERAGE_ABOVE,
+
+    /** Format cells below the average for the range. */
+    LXW_CONDITIONAL_CRITERIA_AVERAGE_BELOW,
+
+    /** Format cells above or equal to the average for the range. */
+    LXW_CONDITIONAL_CRITERIA_AVERAGE_ABOVE_OR_EQUAL,
+
+    /** Format cells below or equal to the average for the range. */
+    LXW_CONDITIONAL_CRITERIA_AVERAGE_BELOW_OR_EQUAL,
+
+    /** Format cells 1 standard deviation above the average for the range. */
+    LXW_CONDITIONAL_CRITERIA_AVERAGE_1_STD_DEV_ABOVE,
+
+    /** Format cells 1 standard deviation below the average for the range. */
+    LXW_CONDITIONAL_CRITERIA_AVERAGE_1_STD_DEV_BELOW,
+
+    /** Format cells 2 standard deviation above the average for the range. */
+    LXW_CONDITIONAL_CRITERIA_AVERAGE_2_STD_DEV_ABOVE,
+
+    /** Format cells 2 standard deviation below the average for the range. */
+    LXW_CONDITIONAL_CRITERIA_AVERAGE_2_STD_DEV_BELOW,
+
+    /** Format cells 3 standard deviation above the average for the range. */
+    LXW_CONDITIONAL_CRITERIA_AVERAGE_3_STD_DEV_ABOVE,
+
+    /** Format cells 3 standard deviation below the average for the range. */
+    LXW_CONDITIONAL_CRITERIA_AVERAGE_3_STD_DEV_BELOW,
+
+    /** Format cells in the top of bottom percentage. */
+    LXW_CONDITIONAL_CRITERIA_TOP_OR_BOTTOM_PERCENT
+};
+
+/** @brief Conditional format rule types.
+ *
+ * Conditional format rule types that apply to Color Scale and Data Bars.
+ */
+enum lxw_conditional_format_rule_types {
+    LXW_CONDITIONAL_RULE_TYPE_NONE,
+
+    /** Conditional format rule type: matches the minimum values in the
+     *  range. Can only be applied to min_rule_type.*/
+    LXW_CONDITIONAL_RULE_TYPE_MINIMUM,
+
+    /** Conditional format rule type: use a number to set the bound.*/
+    LXW_CONDITIONAL_RULE_TYPE_NUMBER,
+
+    /** Conditional format rule type: use a percentage to set the bound.*/
+    LXW_CONDITIONAL_RULE_TYPE_PERCENT,
+
+    /** Conditional format rule type: use a percentile to set the bound.*/
+    LXW_CONDITIONAL_RULE_TYPE_PERCENTILE,
+
+    /** Conditional format rule type: use a formula to set the bound.*/
+    LXW_CONDITIONAL_RULE_TYPE_FORMULA,
+
+    /** Conditional format rule type: matches the maximum values in the
+     *  range. Can only be applied to max_rule_type.*/
+    LXW_CONDITIONAL_RULE_TYPE_MAXIMUM,
+
+    /* Used internally for Excel2010 bars. Not documented. */
+    LXW_CONDITIONAL_RULE_TYPE_AUTO_MIN,
+
+    /* Used internally for Excel2010 bars. Not documented. */
+    LXW_CONDITIONAL_RULE_TYPE_AUTO_MAX
+};
+
+/** @brief Conditional format data bar directions.
+ *
+ * Values used to set the bar direction of a conditional format data bar.
+ */
+enum lxw_conditional_format_bar_direction {
+
+    /** Data bar direction is set by Excel based on the context of the data
+     *  displayed. */
+    LXW_CONDITIONAL_BAR_DIRECTION_CONTEXT,
+
+    /** Data bar direction is from right to left. */
+    LXW_CONDITIONAL_BAR_DIRECTION_RIGHT_TO_LEFT,
+
+    /** Data bar direction is from left to right. */
+    LXW_CONDITIONAL_BAR_DIRECTION_LEFT_TO_RIGHT
+};
+
+/** @brief Conditional format data bar axis options.
+ *
+ * Values used to set the position of the axis in a conditional format data
+ * bar.
+ */
+enum lxw_conditional_bar_axis_position {
+
+    /** Data bar axis position is set by Excel based on the context of the
+     *  data displayed. */
+    LXW_CONDITIONAL_BAR_AXIS_AUTOMATIC,
+
+    /** Data bar axis position is set at the midpoint. */
+    LXW_CONDITIONAL_BAR_AXIS_MIDPOINT,
+
+    /** Data bar axis is turned off. */
+    LXW_CONDITIONAL_BAR_AXIS_NONE
+};
+
+/** @brief Icon types used in the #lxw_conditional_format icon_style field.
+ *
+ * Definitions of icon styles used with Icon Set conditional formats.
+ */
+enum lxw_conditional_icon_types {
+
+    /** Icon style: 3 colored arrows showing up, sideways and down. */
+    LXW_CONDITIONAL_ICONS_3_ARROWS_COLORED,
+
+    /** Icon style: 3 gray arrows showing up, sideways and down. */
+    LXW_CONDITIONAL_ICONS_3_ARROWS_GRAY,
+
+    /** Icon style: 3 colored flags in red, yellow and green. */
+    LXW_CONDITIONAL_ICONS_3_FLAGS,
+
+    /** Icon style: 3 traffic lights - rounded. */
+    LXW_CONDITIONAL_ICONS_3_TRAFFIC_LIGHTS_UNRIMMED,
+
+    /** Icon style: 3 traffic lights with a rim - squarish. */
+    LXW_CONDITIONAL_ICONS_3_TRAFFIC_LIGHTS_RIMMED,
+
+    /** Icon style: 3 colored shapes - a circle, triangle and diamond. */
+    LXW_CONDITIONAL_ICONS_3_SIGNS,
+
+    /** Icon style: 3 circled symbols with tick mark, exclamation and
+     *  cross. */
+    LXW_CONDITIONAL_ICONS_3_SYMBOLS_CIRCLED,
+
+    /** Icon style: 3 symbols with tick mark, exclamation and cross. */
+    LXW_CONDITIONAL_ICONS_3_SYMBOLS_UNCIRCLED,
+
+    /** Icon style: 3 colored arrows showing up, diagonal up, diagonal down
+     *  and down. */
+    LXW_CONDITIONAL_ICONS_4_ARROWS_COLORED,
+
+    /** Icon style: 3 gray arrows showing up, diagonal up, diagonal down and
+     * down. */
+    LXW_CONDITIONAL_ICONS_4_ARROWS_GRAY,
+
+    /** Icon style: 4 circles in 4 colors going from red to black. */
+    LXW_CONDITIONAL_ICONS_4_RED_TO_BLACK,
+
+    /** Icon style: 4 histogram ratings. */
+    LXW_CONDITIONAL_ICONS_4_RATINGS,
+
+    /** Icon style: 4 traffic lights. */
+    LXW_CONDITIONAL_ICONS_4_TRAFFIC_LIGHTS,
+
+    /** Icon style: 5 colored arrows showing up, diagonal up, sideways,
+     * diagonal down and down. */
+    LXW_CONDITIONAL_ICONS_5_ARROWS_COLORED,
+
+    /** Icon style: 5 gray arrows showing up, diagonal up, sideways, diagonal
+     *  down and down. */
+    LXW_CONDITIONAL_ICONS_5_ARROWS_GRAY,
+
+    /** Icon style: 5 histogram ratings. */
+    LXW_CONDITIONAL_ICONS_5_RATINGS,
+
+    /** Icon style: 5 quarters, from 0 to 4 quadrants filled. */
+    LXW_CONDITIONAL_ICONS_5_QUARTERS
+};
+
 /** Options to control the positioning of worksheet objects such as images
  *  or charts. See @ref working_with_object_positioning. */
 enum lxw_object_position {
@@ -237,6 +549,44 @@ enum lxw_object_position {
     /** Same as #LXW_OBJECT_MOVE_AND_SIZE except libxlsxwriter applies hidden
      *  cells after the object is inserted. */
     LXW_OBJECT_MOVE_AND_SIZE_AFTER
+};
+
+/** Options for ignoring worksheet errors/warnings. See worksheet_ignore_errors(). */
+enum lxw_ignore_errors {
+
+    /** Turn off errors/warnings for numbers stores as text. */
+    LXW_IGNORE_NUMBER_STORED_AS_TEXT = 1,
+
+    /** Turn off errors/warnings for formula errors (such as divide by
+     *  zero). */
+    LXW_IGNORE_EVAL_ERROR,
+
+    /** Turn off errors/warnings for formulas that differ from surrounding
+     *  formulas. */
+    LXW_IGNORE_FORMULA_DIFFERS,
+
+    /** Turn off errors/warnings for formulas that omit cells in a range. */
+    LXW_IGNORE_FORMULA_RANGE,
+
+    /** Turn off errors/warnings for unlocked cells that contain formulas. */
+    LXW_IGNORE_FORMULA_UNLOCKED,
+
+    /** Turn off errors/warnings for formulas that refer to empty cells. */
+    LXW_IGNORE_EMPTY_CELL_REFERENCE,
+
+    /** Turn off errors/warnings for cells in a table that do not comply with
+     *  applicable data validation rules. */
+    LXW_IGNORE_LIST_DATA_VALIDATION,
+
+    /** Turn off errors/warnings for cell formulas that differ from the column
+     *  formula. */
+    LXW_IGNORE_CALCULATED_COLUMN,
+
+    /** Turn off errors/warnings for formulas that contain a two digit text
+     *  representation of a year. */
+    LXW_IGNORE_TWO_DIGIT_TEXT_YEAR,
+
+    LXW_IGNORE_LAST_OPTION
 };
 
 enum cell_types {
@@ -261,9 +611,20 @@ enum pane_types {
     FREEZE_SPLIT_PANES
 };
 
+enum lxw_image_position {
+    HEADER_LEFT = 0,
+    HEADER_CENTER,
+    HEADER_RIGHT,
+    FOOTER_LEFT,
+    FOOTER_CENTER,
+    FOOTER_RIGHT
+};
+
 /* Define the tree.h RB structs for the red-black head types. */
 RB_HEAD(lxw_table_cells, lxw_cell);
 RB_HEAD(lxw_drawing_rel_ids, lxw_drawing_rel_id);
+RB_HEAD(lxw_vml_drawing_rel_ids, lxw_drawing_rel_id);
+RB_HEAD(lxw_cond_format_hash, lxw_cond_format_hash_element);
 
 /* Define a RB_TREE struct manually to add extra members. */
 struct lxw_table_rows {
@@ -307,9 +668,32 @@ struct lxw_table_rows {
     /* Add unused struct to allow adding a semicolon */         \
     struct lxw_rb_generate_drawing_rel_ids{int unused;}
 
+#define LXW_RB_GENERATE_VML_DRAWING_REL_IDS(name, type, field, cmp) \
+    RB_GENERATE_INSERT_COLOR(name, type, field, static)         \
+    RB_GENERATE_REMOVE_COLOR(name, type, field, static)         \
+    RB_GENERATE_INSERT(name, type, field, cmp, static)          \
+    RB_GENERATE_REMOVE(name, type, field, static)               \
+    RB_GENERATE_FIND(name, type, field, cmp, static)            \
+    RB_GENERATE_NEXT(name, type, field, static)                 \
+    RB_GENERATE_MINMAX(name, type, field, static)               \
+    /* Add unused struct to allow adding a semicolon */         \
+    struct lxw_rb_generate_vml_drawing_rel_ids{int unused;}
+
+#define LXW_RB_GENERATE_COND_FORMAT_HASH(name, type, field, cmp) \
+    RB_GENERATE_INSERT_COLOR(name, type, field, static)         \
+    RB_GENERATE_REMOVE_COLOR(name, type, field, static)         \
+    RB_GENERATE_INSERT(name, type, field, cmp, static)          \
+    RB_GENERATE_REMOVE(name, type, field, static)               \
+    RB_GENERATE_FIND(name, type, field, cmp, static)            \
+    RB_GENERATE_NEXT(name, type, field, static)                 \
+    RB_GENERATE_MINMAX(name, type, field, static)               \
+    /* Add unused struct to allow adding a semicolon */         \
+    struct lxw_rb_generate_cond_format_hash{int unused;}
+
 STAILQ_HEAD(lxw_merged_ranges, lxw_merged_range);
 STAILQ_HEAD(lxw_selections, lxw_selection);
 STAILQ_HEAD(lxw_data_validations, lxw_data_val_obj);
+STAILQ_HEAD(lxw_cond_format_list, lxw_cond_format_obj);
 STAILQ_HEAD(lxw_image_props, lxw_object_properties);
 STAILQ_HEAD(lxw_chart_props, lxw_object_properties);
 STAILQ_HEAD(lxw_comment_objs, lxw_vml_obj);
@@ -604,6 +988,274 @@ typedef struct lxw_data_val_obj {
 } lxw_data_val_obj;
 
 /**
+ * @brief Worksheet conditional formatting options.
+ *
+ * The fields/options in the the lxw_conditional_format are used to define a
+ * worksheet conditional format. It is used in conjunction with
+ * `worksheet_conditional_format()`.
+ *
+ */
+typedef struct lxw_conditional_format {
+
+    /** The type of conditional format such as #LXW_CONDITIONAL_TYPE_CELL or
+     *  #LXW_CONDITIONAL_DATA_BAR. Should be a #lxw_conditional_format_types
+     *  value.*/
+    uint8_t type;
+
+    /** The criteria parameter is used to set the criteria by which the cell
+     *  data will be evaluated. For example in the expression `a > 5 the
+     *  criteria is `>` or, in libxlsxwriter terms,
+     *  #LXW_CONDITIONAL_CRITERIA_GREATER_THAN. The criteria that are
+     *  applicable depend on the conditional format type.  The criteria
+     *  options are defined in #lxw_conditional_criteria. */
+    uint8_t criteria;
+
+    /** The number value to which the condition refers. For example in the
+     * expression `a > 5`, the value is 5.*/
+    double value;
+
+    /** The string value to which the condition refers, such as `"=A1"`. If a
+     *  value_string exists in the struct then the number value is
+     *  ignored. Note, if the condition refers to a text string then it must
+     *  be double quoted like this `"foo"`. */
+    char *value_string;
+
+    /** The format field is used to specify the #lxw_format format that will
+     *  be applied to the cell when the conditional formatting criterion is
+     *  met. The #lxw_format is created using the `workbook_add_format()`
+     *  method in the same way as cell formats.
+     *
+     *  @note In Excel, a conditional format is superimposed over the existing
+     *  cell format and not all cell format properties can be
+     *  modified. Properties that @b cannot be modified, in Excel, by a
+     *  conditional format are: font name, font size, superscript and
+     *  subscript, diagonal borders, all alignment properties and all
+     *  protection properties. */
+    lxw_format *format;
+
+    /** The minimum value used for Cell, Color Scale and Data Bar conditional
+     *  formats. For Cell types this is usually used with a "Between" style criteria. */
+    double min_value;
+
+    /** The minimum string value used for Cell, Color Scale and Data Bar conditional
+     *  formats. Usually used to set ranges like `=A1`. */
+    char *min_value_string;
+
+    /** The rule used for the minimum condition in Color Scale and Data Bar
+     *  conditional formats. The rule types are defined in
+     *  #lxw_conditional_format_rule_types. */
+    uint8_t min_rule_type;
+
+    /** The color used for the minimum Color Scale conditional format.
+     *  See @ref working_with_colors. */
+    lxw_color_t min_color;
+
+    /** The middle value used for Color Scale and Data Bar conditional
+     *  formats.  */
+    double mid_value;
+
+    /** The middle string value used for Color Scale and Data Bar conditional
+     *  formats. Usually used to set ranges like `=A1`. */
+    char *mid_value_string;
+
+    /** The rule used for the middle condition in Color Scale and Data Bar
+     *  conditional formats. The rule types are defined in
+     *  #lxw_conditional_format_rule_types. */
+    uint8_t mid_rule_type;
+
+    /** The color used for the middle Color Scale conditional format.
+     *  See @ref working_with_colors. */
+    lxw_color_t mid_color;
+
+    /** The maximum value used for Cell, Color Scale and Data Bar conditional
+     *  formats. For Cell types this is usually used with a "Between" style
+     *  criteria. */
+    double max_value;
+
+    /** The maximum string value used for Cell, Color Scale and Data Bar conditional
+     *  formats. Usually used to set ranges like `=A1`. */
+    char *max_value_string;
+
+    /** The rule used for the maximum condition in Color Scale and Data Bar
+     *  conditional formats. The rule types are defined in
+     *  #lxw_conditional_format_rule_types. */
+    uint8_t max_rule_type;
+
+    /** The color used for the maximum Color Scale conditional format.
+     *  See @ref working_with_colors. */
+    lxw_color_t max_color;
+
+    /** The bar_color field sets the fill color for data bars. See @ref
+     *  working_with_colors. */
+    lxw_color_t bar_color;
+
+    /** The bar_only field sets The bar_only field displays a bar data but
+     *  not the data in the cells. */
+    uint8_t bar_only;
+
+    /** In Excel 2010 additional data bar properties were added such as solid
+     *  (non-gradient) bars and control over how negative values are
+     *  displayed. These properties can shown below.
+     *
+     *  The data_bar_2010 field sets Excel 2010 style data bars even when
+     *  Excel 2010 specific properties aren't used. */
+    uint8_t data_bar_2010;
+
+    /** The bar_solid field turns on a solid (non-gradient) fill for data
+     *  bars. Set to LXW_TRUE to turn on. Excel 2010 only. */
+    uint8_t bar_solid;
+
+    /** The bar_negative_color field sets the color fill for the negative
+     *  portion of a data bar. See @ref working_with_colors. Excel 2010 only. */
+    lxw_color_t bar_negative_color;
+
+    /** The bar_border_color field sets the color for the border line of a
+     *  data bar. See @ref working_with_colors. Excel 2010 only. */
+    lxw_color_t bar_border_color;
+
+    /** The bar_negative_border_color field sets the color for the border of
+     *  the negative portion of a data bar. See @ref
+     *  working_with_colors. Excel 2010 only. */
+    lxw_color_t bar_negative_border_color;
+
+    /** The bar_negative_color_same field sets the fill color for the negative
+     *  portion of a data bar to be the same as the fill color for the
+     *  positive portion of the data bar. Set to LXW_TRUE to turn on. Excel
+     *  2010 only. */
+    uint8_t bar_negative_color_same;
+
+    /** The bar_negative_border_color_same field sets the border color for the
+     *  negative portion of a data bar to be the same as the border color for
+     *  the positive portion of the data bar. Set to LXW_TRUE to turn
+     *  on. Excel 2010 only. */
+    uint8_t bar_negative_border_color_same;
+
+    /** The bar_no_border field turns off the border for data bars. Set to
+     *  LXW_TRUE to enable. Excel 2010 only. */
+    uint8_t bar_no_border;
+
+    /** The bar_direction field sets the direction for data bars. This
+     *  property can be either left for left-to-right or right for
+     *  right-to-left. If the property isn't set then Excel will adjust the
+     *  position automatically based on the context. Should be a
+     *  #lxw_conditional_format_bar_direction value. Excel 2010 only. */
+    uint8_t bar_direction;
+
+    /** The bar_axis_position field sets the position within the cells for the
+     *  axis that is shown in data bars when there are negative values to
+     *  display. The property can be either middle or none. If the property
+     *  isn't set then Excel will position the axis based on the range of
+     *  positive and negative values. Should be a
+     *  lxw_conditional_bar_axis_position value. Excel 2010 only. */
+    uint8_t bar_axis_position;
+
+    /** The bar_axis_color field sets the color for the axis that is shown
+     *  in data bars when there are negative values to display. See @ref
+     *  working_with_colors. Excel 2010 only. */
+    lxw_color_t bar_axis_color;
+
+    /** The Icons Sets style is specified by the icon_style parameter. Should
+     *  be a #lxw_conditional_icon_types. */
+    uint8_t icon_style;
+
+    /** The order of Icon Sets icons can be reversed by setting reverse_icons
+     *  to LXW_TRUE.  */
+    uint8_t reverse_icons;
+
+    /** The icons can be displayed without the cell value by settings the
+     *  icons_only parameter to LXW_TRUE.  */
+    uint8_t icons_only;
+
+    /** The multi_range field is used to extend a conditional format over
+     *  non-contiguous ranges.
+     *
+     *  It is possible to apply the conditional format to different cell
+     *  ranges in a worksheet using multiple calls to
+     *  `worksheet_conditional_format()`. However, as a minor optimization it
+     *  is also possible in Excel to apply the same conditional format to
+     *  different non-contiguous cell ranges.
+     *
+     *  This is replicated in `worksheet_conditional_format()` using the
+     *  multi_range option. The range must contain the primary range for the
+     *  conditional format and any others separated by spaces. For example
+     *  `"A1 C1:C5 E2 G1:G100"`.
+     */
+    char *multi_range;
+
+    /** The stop_if_true parameter can be used to set the "stop if true"
+     *  feature of a conditional formatting rule when more than one rule is
+     *  applied to a cell or a range of cells. When this parameter is set then
+     *  subsequent rules are not evaluated if the current rule is true. Set to
+     *  LXW_TRUE to turn on. */
+    uint8_t stop_if_true;
+
+} lxw_conditional_format;
+
+/* Internal */
+typedef struct lxw_cond_format_obj {
+    uint8_t type;
+    uint8_t criteria;
+
+    double min_value;
+    char *min_value_string;
+    uint8_t min_rule_type;
+    lxw_color_t min_color;
+
+    double mid_value;
+    char *mid_value_string;
+    uint8_t mid_value_type;
+    uint8_t mid_rule_type;
+    lxw_color_t mid_color;
+
+    double max_value;
+    char *max_value_string;
+    uint8_t max_value_type;
+    uint8_t max_rule_type;
+    lxw_color_t max_color;
+
+    uint8_t data_bar_2010;
+    uint8_t auto_min;
+    uint8_t auto_max;
+    uint8_t bar_only;
+    uint8_t bar_solid;
+    uint8_t bar_negative_color_same;
+    uint8_t bar_negative_border_color_same;
+    uint8_t bar_no_border;
+    uint8_t bar_direction;
+    uint8_t bar_axis_position;
+    lxw_color_t bar_color;
+    lxw_color_t bar_negative_color;
+    lxw_color_t bar_border_color;
+    lxw_color_t bar_negative_border_color;
+    lxw_color_t bar_axis_color;
+
+    uint8_t icon_style;
+    uint8_t reverse_icons;
+    uint8_t icons_only;
+
+    uint8_t stop_if_true;
+    uint8_t has_max;
+    char *type_string;
+    char *guid;
+
+    int32_t dxf_index;
+    uint32_t dxf_priority;
+
+    char first_cell[LXW_MAX_CELL_NAME_LENGTH];
+    char sqref[LXW_MAX_ATTRIBUTE_LENGTH];
+
+    STAILQ_ENTRY (lxw_cond_format_obj) list_pointers;
+} lxw_cond_format_obj;
+
+typedef struct lxw_cond_format_hash_element {
+    char sqref[LXW_MAX_ATTRIBUTE_LENGTH];
+
+    struct lxw_cond_format_list *cond_formats;
+
+    RB_ENTRY (lxw_cond_format_hash_element) tree_pointers;
+} lxw_cond_format_hash_element;
+
+/**
  * @brief Options for inserted images.
  *
  * Options for modifying images inserted via `worksheet_insert_image_opt()`.
@@ -694,6 +1346,7 @@ typedef struct lxw_object_properties {
     lxw_chart *chart;
     uint8_t is_duplicate;
     char *md5;
+    char *image_position;
 
     STAILQ_ENTRY (lxw_object_properties) list_pointers;
 } lxw_object_properties;
@@ -792,16 +1445,21 @@ typedef struct lxw_vml_obj {
     uint32_t row_absolute;
     uint32_t width;
     uint32_t height;
+    double x_dpi;
+    double y_dpi;
     lxw_color_t color;
     uint8_t font_family;
     uint8_t visible;
     uint32_t author_id;
+    uint32_t rel_index;
     double font_size;
     struct lxw_drawing_coords from;
     struct lxw_drawing_coords to;
     char *author;
     char *font_name;
     char *text;
+    char *image_position;
+    char *name;
     STAILQ_ENTRY (lxw_vml_obj) list_pointers;
 
 } lxw_vml_obj;
@@ -809,13 +1467,30 @@ typedef struct lxw_vml_obj {
 /**
  * @brief Header and footer options.
  *
- * Optional parameters used in the worksheet_set_header_opt() and
+ * Optional parameters used in the `worksheet_set_header_opt()` and
  * worksheet_set_footer_opt() functions.
  *
  */
 typedef struct lxw_header_footer_options {
-    /** Header or footer margin in inches. Excel default is 0.3. */
+    /** Header or footer margin in inches. Excel default is 0.3. Must by
+     *  larger than 0.0.  See `worksheet_set_header_opt()`. */
     double margin;
+
+    /** The left header image filename, with path if required. This should
+     * have a corresponding `&G/&[Picture]` placeholder in the `&L` section of
+     * the header/footer string. See `worksheet_set_header_opt()`. */
+    char *image_left;
+
+    /** The center header image filename, with path if required. This should
+     * have a corresponding `&G/&[Picture]` placeholder in the `&C` section of
+     * the header/footer string. See `worksheet_set_header_opt()`. */
+    char *image_center;
+
+    /** The right header image filename, with path if required. This should
+     * have a corresponding `&G/&[Picture]` placeholder in the `&R` section of
+     * the header/footer string. See `worksheet_set_header_opt()`. */
+    char *image_right;
+
 } lxw_header_footer_options;
 
 /**
@@ -936,10 +1611,13 @@ typedef struct lxw_worksheet {
     struct lxw_merged_ranges *merged_ranges;
     struct lxw_selections *selections;
     struct lxw_data_validations *data_validations;
+    struct lxw_cond_format_hash *conditional_formats;
     struct lxw_image_props *image_props;
     struct lxw_chart_props *chart_data;
     struct lxw_drawing_rel_ids *drawing_rel_ids;
+    struct lxw_vml_drawing_rel_ids *vml_drawing_rel_ids;
     struct lxw_comment_objs *comment_objs;
+    struct lxw_comment_objs *header_image_objs;
 
     lxw_row_t dim_rowmin;
     lxw_row_t dim_rowmax;
@@ -1041,9 +1719,11 @@ typedef struct lxw_worksheet {
     uint16_t vbreaks_count;
 
     uint32_t drawing_rel_id;
+    uint32_t vml_drawing_rel_id;
     struct lxw_rel_tuples *external_hyperlinks;
     struct lxw_rel_tuples *external_drawing_links;
     struct lxw_rel_tuples *drawing_links;
+    struct lxw_rel_tuples *vml_drawing_links;
 
     struct lxw_panes panes;
 
@@ -1057,10 +1737,36 @@ typedef struct lxw_worksheet {
     uint8_t has_header_vml;
     lxw_rel_tuple *external_vml_comment_link;
     lxw_rel_tuple *external_comment_link;
+    lxw_rel_tuple *external_vml_header_link;
     char *comment_author;
     char *vml_data_id_str;
+    char *vml_header_id_str;
     uint32_t vml_shape_id;
+    uint32_t vml_header_id;
+    uint32_t dxf_priority;
     uint8_t comment_display_default;
+    uint32_t data_bar_2010_index;
+
+    uint8_t has_ignore_errors;
+    char *ignore_number_stored_as_text;
+    char *ignore_eval_error;
+    char *ignore_formula_differs;
+    char *ignore_formula_range;
+    char *ignore_formula_unlocked;
+    char *ignore_empty_cell_reference;
+    char *ignore_list_data_validation;
+    char *ignore_calculated_column;
+    char *ignore_two_digit_text_year;
+
+    uint16_t excel_version;
+
+    lxw_object_properties **header_footer_objs[LXW_HEADER_FOOTER_OBJS_MAX];
+    lxw_object_properties *header_left_object_props;
+    lxw_object_properties *header_center_object_props;
+    lxw_object_properties *header_right_object_props;
+    lxw_object_properties *footer_left_object_props;
+    lxw_object_properties *footer_center_object_props;
+    lxw_object_properties *footer_right_object_props;
 
     STAILQ_ENTRY (lxw_worksheet) list_pointers;
 
@@ -1132,6 +1838,8 @@ typedef struct lxw_drawing_rel_id {
 
     RB_ENTRY (lxw_drawing_rel_id) tree_pointers;
 } lxw_drawing_rel_id;
+
+
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus
@@ -1586,20 +2294,21 @@ lxw_error worksheet_write_blank(lxw_worksheet *worksheet,
                                 lxw_format *format);
 
 /**
- * @brief Write a formula to a worksheet cell with a user defined result.
+ * @brief Write a formula to a worksheet cell with a user defined numeric
+ *        result.
  *
  * @param worksheet Pointer to a lxw_worksheet instance to be updated.
  * @param row       The zero indexed row number.
  * @param col       The zero indexed column number.
  * @param formula   Formula string to write to cell.
  * @param format    A pointer to a Format instance or NULL.
- * @param result    A user defined result for a formula.
+ * @param result    A user defined numeric result for the formula.
  *
  * @return A #lxw_error code.
  *
  * The `%worksheet_write_formula_num()` function writes a formula or Excel
  * function to the cell specified by `row` and `column` with a user defined
- * result:
+ * numeric result:
  *
  * @code
  *     // Required as a workaround only.
@@ -1633,6 +2342,51 @@ lxw_error worksheet_write_formula_num(lxw_worksheet *worksheet,
                                       lxw_col_t col,
                                       const char *formula,
                                       lxw_format *format, double result);
+
+/**
+ * @brief Write a formula to a worksheet cell with a user defined string
+ *        result.
+ *
+ * @param worksheet Pointer to a lxw_worksheet instance to be updated.
+ * @param row       The zero indexed row number.
+ * @param col       The zero indexed column number.
+ * @param formula   Formula string to write to cell.
+ * @param format    A pointer to a Format instance or NULL.
+ * @param result    A user defined string result for the formula.
+ *
+ * @return A #lxw_error code.
+ *
+ * The `%worksheet_write_formula_str()` function writes a formula or Excel
+ * function to the cell specified by `row` and `column` with a user defined
+ * string result:
+ *
+ * @code
+ *     // The example formula is A & B -> AB.
+ *     worksheet_write_formula_str(worksheet, 0, 0, "=\"A\" & \"B\"", NULL, "AB");
+ * @endcode
+ *
+ * The `%worksheet_write_formula_str()` function is similar to the
+ * `%worksheet_write_formula_num()` function except it writes a string result
+ * instead or a numeric result. See `worksheet_write_formula_num()`  for more
+ * details on why/when these functions are required.
+ *
+ * One place where the `%worksheet_write_formula_str()` function may be required
+ * is to specify an empty result which will force a recalculation of the formula
+ * when loaded in LibreOffice.
+ *
+ * @code
+ *     worksheet_write_formula_str(worksheet, 0, 0, "=Sheet1!$A$1", NULL, "");
+ * @endcode
+ *
+ * See the FAQ @ref faq_formula_zero.
+ *
+ * See also @ref working_with_formulas.
+ */
+lxw_error worksheet_write_formula_str(lxw_worksheet *worksheet,
+                                      lxw_row_t row,
+                                      lxw_col_t col,
+                                      const char *formula,
+                                      lxw_format *format, const char *result);
 
 /**
  * @brief Write a "Rich" multi-format string to a worksheet cell.
@@ -2349,7 +3103,7 @@ lxw_error worksheet_insert_chart_opt(lxw_worksheet *worksheet,
  *    worksheet_write_number(worksheet, 1, 1, 123, format);
  * @endcode
  *
- * @note Merged ranges generally don’t work in libxlsxwriter when the Workbook
+ * @note Merged ranges generally don't work in libxlsxwriter when the Workbook
  * #lxw_workbook_options `constant_memory` mode is enabled.
  */
 lxw_error worksheet_merge_range(lxw_worksheet *worksheet, lxw_row_t first_row,
@@ -2433,7 +3187,7 @@ lxw_error worksheet_data_validation_cell(lxw_worksheet *worksheet,
                                          lxw_data_validation *validation);
 
 /**
- * @brief Add a data validation to a range cell.
+ * @brief Add a data validation to a range.
  *
  * @param worksheet  Pointer to a lxw_worksheet instance to be updated.
  * @param first_row  The first row of the range. (All zero indexed.)
@@ -2473,6 +3227,85 @@ lxw_error worksheet_data_validation_range(lxw_worksheet *worksheet,
                                           lxw_row_t last_row,
                                           lxw_col_t last_col,
                                           lxw_data_validation *validation);
+
+/**
+ * @brief Add a conditional format to a worksheet cell.
+ *
+ * @param worksheet           Pointer to a lxw_worksheet instance to be updated.
+ * @param row                 The zero indexed row number.
+ * @param col                 The zero indexed column number.
+ * @param conditional_format  A #lxw_conditional_format object to control the
+ *                            conditional format.
+ *
+ * @return A #lxw_error code.
+ *
+ * The `%worksheet_conditional_format_cell()` function is used to set a
+ * conditional format for a cell in a worksheet:
+ *
+ * @code
+ *     conditional_format->type     = LXW_CONDITIONAL_TYPE_CELL;
+ *     conditional_format->criteria = LXW_CONDITIONAL_CRITERIA_GREATER_THAN_OR_EQUAL_TO;
+ *     conditional_format->value    = 50;
+ *     conditional_format->format   = format1;
+ *     worksheet_conditional_format_cell(worksheet, CELL("A1"), conditional_format);
+ * @endcode
+ *
+ * The conditional format parameters is specified in #lxw_conditional_format.
+ *
+ * See @ref working_with_conditional_formatting for full details.
+ */
+lxw_error worksheet_conditional_format_cell(lxw_worksheet *worksheet,
+                                            lxw_row_t row,
+                                            lxw_col_t col,
+                                            lxw_conditional_format
+                                            *conditional_format);
+
+/**
+ * @brief Add a conditional format to a worksheet range.
+ *
+ * @param worksheet  Pointer to a lxw_worksheet instance to be updated.
+ * @param first_row  The first row of the range. (All zero indexed.)
+ * @param first_col  The first column of the range.
+ * @param last_row   The last row of the range.
+ * @param last_col   The last col of the range.
+ * @param conditional_format  A #lxw_conditional_format object to control the
+ *                            conditional format.
+ *
+ * @return A #lxw_error code.
+ *
+ * The `%worksheet_conditional_format_cell()` function is used to set a
+ * conditional format for a range of cells in a worksheet:
+ *
+ * @code
+ *     conditional_format->type     = LXW_CONDITIONAL_TYPE_CELL;
+ *     conditional_format->criteria = LXW_CONDITIONAL_CRITERIA_GREATER_THAN_OR_EQUAL_TO;
+ *     conditional_format->value    = 50;
+ *     conditional_format->format   = format1;
+ *     worksheet_conditional_format_range(worksheet1, RANGE("B3:K12"), conditional_format);
+ *
+ *     conditional_format->type     = LXW_CONDITIONAL_TYPE_CELL;
+ *     conditional_format->criteria = LXW_CONDITIONAL_CRITERIA_LESS_THAN;
+ *     conditional_format->value    = 50;
+ *     conditional_format->format   = format2;
+ *     worksheet_conditional_format_range(worksheet1, RANGE("B3:K12"), conditional_format);
+ * @endcode
+ *
+ * Output:
+ *
+ * @image html conditional_format1.png
+ *
+ *
+ * The conditional format parameters is specified in #lxw_conditional_format.
+ *
+ * See @ref working_with_conditional_formatting for full details.
+ */
+lxw_error worksheet_conditional_format_range(lxw_worksheet *worksheet,
+                                             lxw_row_t first_row,
+                                             lxw_col_t first_col,
+                                             lxw_row_t last_row,
+                                             lxw_col_t last_col,
+                                             lxw_conditional_format
+                                             *conditional_format);
 
  /**
   * @brief Make a worksheet the active, i.e., visible worksheet.
@@ -2846,7 +3679,11 @@ void worksheet_set_margins(lxw_worksheet *worksheet, double left,
  *   | `&S`            |               | Strikethrough         |
  *   | `&X`            |               | Superscript           |
  *   | `&Y`            |               | Subscript             |
+ *   | `&[Picture]`    | Images        | Image placeholder     |
+ *   | `&G`            |               | Same as `&[Picture]`  |
+ *   | `&&`            | Miscellaneous | Literal ampersand &   |
  *
+ * Note: inserting images requires the `worksheet_set_header_opt()` function.
  *
  * Text in headers and footers can be justified (aligned) to the left, center
  * and right by prefixing the text with the control characters `&L`, `&C` and
@@ -2970,16 +3807,13 @@ void worksheet_set_margins(lxw_worksheet *worksheet, double left,
  * @code
  *
  *    $ unzip myfile.xlsm -d myfile
- *    $ xmllint --format `find myfile -name "*.xml" | xargs` | egrep "Header|Footer"
+ *    $ xmllint --format `find myfile -name "*.xml" | xargs` | egrep "Header|Footer" | sed 's/&amp;/\&/g'
  *
  *      <headerFooter scaleWithDoc="0">
- *        <oddHeader>&amp;L&amp;P</oddHeader>
+ *        <oddHeader>&L&P</oddHeader>
  *      </headerFooter>
  *
  * @endcode
- *
- * Note that in this case you need to unescape the Html. In the above example
- * the header string would be `&L&P`.
  *
  * To include a single literal ampersand `&` in a header or footer you should
  * use a double ampersand `&&`:
@@ -2988,8 +3822,8 @@ void worksheet_set_margins(lxw_worksheet *worksheet, double left,
  *     worksheet_set_header(worksheet, "&CCuriouser && Curiouser - Attorneys at Law");
  * @endcode
  *
- * Note, the header or footer string must be less than 255 characters. Strings
- * longer than this will not be written.
+ * Note, Excel requires that the header or footer string must be less than 255
+ * characters. Strings longer than this will not be written.
  *
  */
 lxw_error worksheet_set_header(lxw_worksheet *worksheet, const char *string);
@@ -3016,18 +3850,42 @@ lxw_error worksheet_set_footer(lxw_worksheet *worksheet, const char *string);
  *
  * @return A #lxw_error code.
  *
- * The syntax of this function is the same as worksheet_set_header() with an
+ * The syntax of this function is the same as `worksheet_set_header()` with an
  * additional parameter to specify options for the header.
  *
- * Currently, the only available option is the header margin:
+ * The #lxw_header_footer_options options are:
+ *
+ * - `margin`: Header or footer margin in inches. The value must by larger
+ *   than 0.0. The Excel default is 0.3.
+ *
+ * - `image_left`: The left header image filename, with path if required. This
+ *   should have a corresponding `&G/&[Picture]` placeholder in the `&L`
+ *   section of the header/footer string.
+ *
+ * - `image_center`: The center header image filename, with path if
+ *   required. This should have a corresponding `&G/&[Picture]` placeholder in
+ *   the `&C` section of the header/footer string.
+ *
+ * - `image_right`: The right header image filename, with path if
+ *   required. This should have a corresponding `&G/&[Picture]` placeholder in
+ *   the `&R` section of the header/footer string.
  *
  * @code
+ *     lxw_header_footer_options header_options = { .margin = 0.2 };
  *
- *    lxw_header_footer_options header_options = { 0.2 };
- *
- *    worksheet_set_header_opt(worksheet, "Some text", &header_options);
- *
+ *     worksheet_set_header_opt(worksheet, "Some text", &header_options);
  * @endcode
+ *
+ * Images can be inserted in the header by specifying the `&[Picture]`
+ * placeholder and a filename/path to the image:
+ *
+ * @code
+ *     lxw_header_footer_options header_options = {.image_left = "logo.png"};
+ *
+ *    worksheet_set_header_opt(worksheet, "&L&[Picture]", &header_options);
+ * @endcode
+ *
+ * @image html headers_footers.png
  *
  */
 lxw_error worksheet_set_header_opt(lxw_worksheet *worksheet,
@@ -3043,7 +3901,7 @@ lxw_error worksheet_set_header_opt(lxw_worksheet *worksheet,
  *
  * @return A #lxw_error code.
  *
- * The syntax of this function is the same as worksheet_set_header_opt().
+ * The syntax of this function is the same as `worksheet_set_header_opt()`.
  *
  */
 lxw_error worksheet_set_footer_opt(lxw_worksheet *worksheet,
@@ -3641,6 +4499,8 @@ void worksheet_set_default_row(lxw_worksheet *worksheet, double height,
  * @param worksheet Pointer to a lxw_worksheet instance.
  * @param name      Name of the worksheet used by VBA.
  *
+ * @return A #lxw_error.
+ *
  * The `worksheet_set_vba_name()` function can be used to set the VBA name for
  * the worksheet. This is sometimes required when a vbaProject macro included
  * via `workbook_add_vba_project()` refers to the worksheet by a name other
@@ -3656,8 +4516,6 @@ void worksheet_set_default_row(lxw_worksheet *worksheet, double height,
  * extracted from a foreign language version of Excel.
  *
  * See also @ref working_with_macros
- *
- * @return A #lxw_error.
  */
 lxw_error worksheet_set_vba_name(lxw_worksheet *worksheet, const char *name);
 
@@ -3699,6 +4557,107 @@ void worksheet_show_comments(lxw_worksheet *worksheet);
 void worksheet_set_comments_author(lxw_worksheet *worksheet,
                                    const char *author);
 
+/**
+ * @brief Ignore various Excel errors/warnings in a worksheet for user
+ *        defined ranges.
+ *
+ * @param worksheet Pointer to a lxw_worksheet instance.
+ * @param type      The type of error/warning to ignore. See #lxw_ignore_errors.
+ * @param range     The range(s) for which the error/warning should be ignored.
+ *
+ * @return A #lxw_error.
+ *
+ *
+ * The `%worksheet_ignore_errors()` function can be used to ignore various
+ * worksheet cell errors/warnings. For example the following code writes a string
+ * that looks like a number:
+ *
+ * @code
+ *     worksheet_write_string(worksheet, CELL("D2"), "123", NULL);
+ * @endcode
+ *
+ * This causes Excel to display a small green triangle in the top left hand
+ * corner of the cell to indicate an error/warning:
+ *
+ * @image html ignore_errors1.png
+ *
+ * Sometimes these warnings are useful indicators that there is an issue in
+ * the spreadsheet but sometimes it is preferable to turn them off. Warnings
+ * can be turned off at the Excel level for all workbooks and worksheets by
+ * using the using "Excel options -> Formulas -> Error checking
+ * rules". Alternatively you can turn them off for individual cells in a
+ * worksheet, or ranges of cells, using the `%worksheet_ignore_errors()`
+ * function with different #lxw_ignore_errors options and ranges like this:
+ *
+ * @code
+ *     worksheet_ignore_errors(worksheet, LXW_IGNORE_NUMBER_STORED_AS_TEXT, "C3");
+ *     worksheet_ignore_errors(worksheet, LXW_IGNORE_EVAL_ERROR,            "C6");
+ * @endcode
+ *
+ * The range can be a single cell, a range of cells, or multiple cells and ranges
+ * separated by spaces:
+ *
+ * @code
+ *     // Single cell.
+ *     worksheet_ignore_errors(worksheet, LXW_IGNORE_NUMBER_STORED_AS_TEXT, "C6");
+ *
+ *     // Or a single range:
+ *     worksheet_ignore_errors(worksheet, LXW_IGNORE_NUMBER_STORED_AS_TEXT, "C6:G8");
+ *
+ *     // Or multiple cells and ranges:
+ *     worksheet_ignore_errors(worksheet, LXW_IGNORE_NUMBER_STORED_AS_TEXT, "C6 E6 G1:G20 J2:J6");
+ * @endcode
+ *
+ * @note Calling `%worksheet_ignore_errors()` more than once for the same
+ * #lxw_ignore_errors type will overwrite the previous range.
+ *
+ * You can turn off warnings for an entire column by specifying the range from
+ * the first cell in the column to the last cell in the column:
+ *
+ * @code
+ *     worksheet_ignore_errors(worksheet, LXW_IGNORE_NUMBER_STORED_AS_TEXT, "A1:A1048576");
+ * @endcode
+ *
+ * Or for the entire worksheet by specifying the range from the first cell in
+ * the worksheet to the last cell in the worksheet:
+ *
+ * @code
+ *     worksheet_ignore_errors(worksheet, LXW_IGNORE_NUMBER_STORED_AS_TEXT, "A1:XFD1048576");
+ * @endcode
+ *
+ * The worksheet errors/warnings that can be ignored are:
+ *
+ * - #LXW_IGNORE_NUMBER_STORED_AS_TEXT: Turn off errors/warnings for numbers
+ *    stores as text.
+ *
+ * - #LXW_IGNORE_EVAL_ERROR: Turn off errors/warnings for formula errors (such
+ *    as divide by zero).
+ *
+ * - #LXW_IGNORE_FORMULA_DIFFERS: Turn off errors/warnings for formulas that
+ *    differ from surrounding formulas.
+ *
+ * - #LXW_IGNORE_FORMULA_RANGE: Turn off errors/warnings for formulas that
+ *    omit cells in a range.
+ *
+ * - #LXW_IGNORE_FORMULA_UNLOCKED: Turn off errors/warnings for unlocked cells
+ *    that contain formulas.
+ *
+ * - #LXW_IGNORE_EMPTY_CELL_REFERENCE: Turn off errors/warnings for formulas
+ *    that refer to empty cells.
+ *
+ * - #LXW_IGNORE_LIST_DATA_VALIDATION: Turn off errors/warnings for cells in a
+ *    table that do not comply with applicable data validation rules.
+ *
+ * - #LXW_IGNORE_CALCULATED_COLUMN: Turn off errors/warnings for cell formulas
+ *    that differ from the column formula.
+ *
+ * - #LXW_IGNORE_TWO_DIGIT_TEXT_YEAR: Turn off errors/warnings for formulas
+ *    that contain a two digit text representation of a year.
+ *
+ */
+lxw_error worksheet_ignore_errors(lxw_worksheet *worksheet, uint8_t type,
+                                  const char *range);
+
 lxw_worksheet *lxw_worksheet_new(lxw_worksheet_init_data *init_data);
 void lxw_worksheet_free(lxw_worksheet *worksheet);
 void lxw_worksheet_assemble_xml_file(lxw_worksheet *worksheet);
@@ -3707,6 +4666,10 @@ void lxw_worksheet_write_single_row(lxw_worksheet *worksheet);
 void lxw_worksheet_prepare_image(lxw_worksheet *worksheet,
                                  uint32_t image_ref_id, uint32_t drawing_id,
                                  lxw_object_properties *object_props);
+
+void lxw_worksheet_prepare_header_image(lxw_worksheet *worksheet,
+                                        uint32_t image_ref_id,
+                                        lxw_object_properties *object_props);
 
 void lxw_worksheet_prepare_chart(lxw_worksheet *worksheet,
                                  uint32_t chart_ref_id, uint32_t drawing_id,
@@ -3719,10 +4682,14 @@ uint32_t lxw_worksheet_prepare_vml_objects(lxw_worksheet *worksheet,
                                            uint32_t vml_drawing_id,
                                            uint32_t comment_id);
 
+void lxw_worksheet_prepare_header_vml_objects(lxw_worksheet *self,
+                                              uint32_t vml_header_id,
+                                              uint32_t vml_drawing_id);
+
 lxw_row *lxw_worksheet_find_row(lxw_worksheet *worksheet, lxw_row_t row_num);
 lxw_cell *lxw_worksheet_find_cell_in_row(lxw_row *row, lxw_col_t col_num);
 /*
- * External functions to call intern XML methods shared with chartsheet.
+ * External functions to call intern XML functions shared with chartsheet.
  */
 void lxw_worksheet_write_sheet_views(lxw_worksheet *worksheet);
 void lxw_worksheet_write_page_margins(lxw_worksheet *worksheet);
